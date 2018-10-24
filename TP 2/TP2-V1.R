@@ -18,8 +18,8 @@ min.nindex <- function(m, n=5) {
   return(i[1:n])
 }
 cosinus.vm <- function(v,m) {
-  n <- sqrt(colSums(m^2)); (v %*% m)/(n * sqrt(sum(v^2))) 
-  return(n)
+  n <- sqrt(colSums(m^2)); a=(v %*% m)/(n * sqrt(sum(v^2))) 
+  return(a)
   }
 
 # Question 1 --------------------------------------------------------------
@@ -57,17 +57,42 @@ colnames(recommendations.RR)
 
 
 
+#Essayons avec des nouveau page Rank
+m.deg2=m+m^2
+m.deg2[m.deg2>=1]=1
+CDi.deg2=rowSums(m.deg2)+1
+PageRank.deg2=rep(1,n)
+erreur.deg2<-1
+itt.deg2<-1
+
+while(erreur.deg2>=0.00001)
+{
+  r.deg2<-(1-d)+(d*(t(as.matrix(m.deg2))%*%(PageRank.deg2/CDi.deg2)))
+  erreur.deg2<-sqrt(sum((r.deg2-PageRank.deg2)^2));
+  PageRank.deg2<-r.deg2
+  itt.deg2<-itt.deg2+1
+}
+
+itt.deg2
+references.PageRank.deg2<-m.deg2[doc.id.q1,]*PageRank.deg2
+recommendations.references.deg2<-references.PageRank.deg2[order(-references.PageRank.deg2)][1:10]
+colnames(recommendations.references.deg2)
+
 
 # Question 2 --------------------------------------------------------------
 #Vecteur qui correspond a l'article recherché
 doc.id.q2<-paste("X",doc.id.q1,sep="")
+q2.id=747
 vecteur.q2<-m[,doc.id.q2]
 
 cosinus.q2<-cosinus.vm(vecteur.q2,as.matrix(m))
 
-recommendations.ii.cos<-cosinus.q2[order(-cosinus.q2)][1:10]
-rownames(data.frame(recommendations.ii.cos))
 
+recommendations.ii.cos<-cosinus.q2[order(-cosinus.q2)][1:10]
+
+recommendations.ii.cos.id=order(-cosinus.q2)[2:11]
+
+colnames(m[recommendations.id])
 
 
 
