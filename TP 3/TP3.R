@@ -109,6 +109,62 @@ g<-ggplot(RMSE.q5,aes(x=dimension))+
 #Déterminez le nombre optimal de dimensions, 
 #mais en utilisant cette fois une validation croisée.
 
+set.seed(55)
+j<-c(m>0)
+j.test<-i
+j.test[sample(length(j),.8*length(j))]<-FALSE
+j.train<-!j.test
+m.test<-m.NA
+m.train<-m.NA
+m.train[j.test]<-NA
+m.test[!j.test]<-NA
+moy.row.train<-rowSums(m.train,na.rm=TRUE)/rowSums(m>0,na.rm = TRUE)
+m.norm.q6<-m.train-moy.row.train
+m.norm.q6[is.na(m.norm.q6)]<-0
+m.norm.q6<-Matrix(m.norm.q6, sparse=TRUE)
+
+SVD.q6<-svd(m.norm.q6)
+
+S.q6<-SVD.q6$d
+S.q6<-diag(S.q6)
+U.q6<-SVD.q6$u
+V.q6<-SVD.q6$v
+
+m.moy.q6<-m.train
+m.moy.q6[]<-0
+m.moy.q6<-sweep(m.moy.q6,1,moy.row.train,'+')
+
+dim.vector.q6<-seq(from = 10, to = nrow(m), by =50)
+RMSE.q6<-data.frame(dimension=dim.vector.q6,RMSE=rep(0,length(dim.vector.q6)),
+                    MAE=rep(0,length(dim.vector.q6)))
+
+
+for(i in RMSE.q6$dimension)
+{
+  print(i)
+  Si<-sqrt(S.q6[1:i,1:i])
+  Ui<-U.q6[,1:i]
+  Vi<-V.q6[,1:i]
+  
+  m.pred.q6<-m.moy.q6+(Ui%*%t(Si))%*%Si%*%t(Vi)
+  
+  
+  RMSE.q6$RMSE[which(RMSE.q6$dimension==i)]<-sqrt(mean(as.matrix((m.test[!j.train]-m.pred.q6[!j.train])^2),
+                                                       na.rm=TRUE))
+  RMSE.q6$MAE[which(RMSE.q6$dimension==i)]<-mean(as.matrix(abs(m.test[!j.train]-m.pred.q6[!j.train])),
+                                                 na.rm=TRUE)
+  
+}
+
+
+g2<-ggplot(RMSE.q6,aes(x=dimension))+
+  geom_point(aes(y=RMSE,color='GREEN'))+
+  geom_point(aes(y=MAE,color='BLACK'))+
+  labs(title='Evolution du RMSE et MAE en fonction du nombre de dimensions',
+       x='Dimensions',y='Erreur',color="Type d'erreur")+
+  scale_color_manual(labels=c('RMSE',"MAE"),values=c('GREEN','BLACK'))
+
+
 
 # Question 7 --------------------------------------------------------------
 
