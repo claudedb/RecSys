@@ -140,6 +140,7 @@ colnames(m[recommendations.ii.cos.id])
 
 
 #Discussion sur les résultats 
+
 #On observe que les résultats des trois approches sont 
 #différents mais similaires et c'est ce qui était attendu. 
 #Pour le cosinus, il est possible que des recommandations 
@@ -149,8 +150,9 @@ colnames(m[recommendations.ii.cos.id])
 #raison de la similarité des recommendations avec l'approche
 #PageRank où on recommandait seulement des références de 
 #l'article visé, on conclut que si un article possède des 
-#références similaires à l'article visé, les chances qu'il
-#figure dans les références de ce dernier sont élevées. 
+#références similaires à l'article visé selon le cosinus,
+#les chances qu'il figure dans les références de ce dernier 
+#sont élevées. 
 
 
 
@@ -159,7 +161,7 @@ colnames(m[recommendations.ii.cos.id])
 #manière analogue au processus employé dans l'article 
 #de McNee intitulé "On the recommending of citations for
 #research papers". L'équipe utilisait les référence de
-#degré 1 comme donnée de test et adoptait une approche
+#degré 1 comme données de test et adoptait une approche
 #"leave one out". En d'autres mots, on retire tour à
 #tour une citation dans l'ensemble des références degré 1
 #de l'article visé et on tente de le recommander avec la 
@@ -167,7 +169,7 @@ colnames(m[recommendations.ii.cos.id])
 #seulement les citations de degré 1 pour pouvoir comparer 
 #nos résultats avec ceux de l'article.
 
-#Tous les id de citation de l'article
+#Tous les id de citations de l'article
 id.un.cv=which(m[q2.id,]!=0)
 
 
@@ -290,34 +292,35 @@ mtext(side=2,"Pourcentage",line=2.5)
 #Le plus important est la taille de l'échantillon: nous
 #utilisons une base de données de 1090 articles alors que 
 #l'article en utilise une de 186 000 articles. De plus,  
-#l'équipe de McNee ont fixé que la citation était recommandée
-#si elle figurait dans le top 40, alors que pour nous, 
-#la citation doit être dans le top 25 pour tenir compte 
-#du plus petit échantillon. Pour ce qui est de la précision
+#on ne possède pas le seuil de recommandation pour l'équipe 
+#de McNee (ils présentent les résultats jusqu'au top 40, mais
+#en regardant leur graph de précision, on constate que le seuil
+#est encore moins sévère, possiblement jusqu'au top 100) 
+#alors que pour nous, la citation doit être dans le top 25 
+# pour être recommandée afin de tenir compte 
+#du plus petit échantillon. Pour ce qui est de la précision,
 #nos citations recommandées sont à 33.3% dans le top 5, 
 #tandis que 18% des citations recommandées de l'approche
-#item-item de l'article sont dans le top 1 (on ne possède
+#item-item du papier sont dans le top 1 (on ne possède
 #aucune citation dans le top 1). Si on compare 
 #les deux top 10, on a une précision de 55.6% alors que
-#la précision de l'article est de 52%. On a une précision
-#de 100% pour le top 25 alors que l'article en a une de 
+#la précision du papier est de 52%. On a une précision
+#de 100% pour le top 25 alors que le papier en a une de 
 #75% pour le top 40. Alors, pour la précison, il semblerait
 # que notre méthode soit moins performante que l'article 
 #pour les meilleurs rang et plus performante pour les rangs 
 #éloignés. 
 
-#Pour ce qui est du rappel, nos résultats surpassent ceux 
-#de l'article. Par exemple. nous avons une couverture 
+#Pour ce qui est du rappel, nous avons une couverture 
 #maximale (pourcentage dans le top 25) de 52.9%, alors que
-#l'article a une couverture maximale (pourcentage dans le 
-#top 40) de 39%. 
+#l'article a une couverture dans le top 40 de 39%. 
 
 #Bref, même si plusieurs facteurs nous empêche de comparer
 #les résultats entre notre méthode et celle de l'article 
 #de manière rigoureuse à cause des nombreuses variables 
 #importantes des expériences, on peut au moins dire que 
-#l'ordre de grandeur de nos précisions et rappel ont du 
-#sens. 
+#l'ordre de grandeur de nos résultats de  précision et 
+#rappel ont du sens. 
 
 
 
