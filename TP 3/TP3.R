@@ -1,9 +1,9 @@
 #TP 3 Code
-#Par Claude Demers-Bélanger (1534217) et Mikael Perreault (1741869)
+#Par Claude Demers-Belanger (1534217) et Mikael Perreault (1741869)
 
 # Pre Code ----------------------------------------------------------------
 
-#On utilise ces deux lignes pour charger et vérifier que les packages nécessaires sont bien installés
+#On utilise ces deux lignes pour charger et verifier que les packages necessaires sont bien installes
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2)
 
@@ -17,8 +17,8 @@ colnames(m) <- paste('i', 1:ncol(m), sep='')
 
 
 # Question 1 ---------------------------------------------------------------
-# Déterminer une baseline pour l'évaluation de la méthode.
-# Prenons une méthode ou nous appliquons la moyenne des lignes et des colonnes pour évaluer les notes
+# Determiner une baseline pour l'evaluation de la methode.
+# Prenons une methode ou nous appliquons la moyenne des lignes et des colonnes pour evaluer les notes
 
 moy.col<-colSums(m)/colSums(m!=0)
 moy.row<-rowSums(m)/rowSums(m!=0)
@@ -29,10 +29,11 @@ m.baseline<-sweep(sweep(m.baseline,1,moy.row/2,"+"),2,moy.col/2,"+")
 m.NA<-m
 m.NA[m.NA==0]<-NA
 RMSE.baseline<-sqrt(mean(as.matrix((m.NA-m.baseline)^2),na.rm=TRUE))
+MAE.baseline<-mean(as.matrix(abs(m.NA-m.baseline)),na.rm=TRUE)
 
 
 # Question 2 --------------------------------------------------------------
-# Appliquer la décomposition SVD
+# Appliquer la decomposition SVD
 
 m.norm<-m.NA-moy.row
 m.norm[is.na(m.norm)]<-0
@@ -62,6 +63,7 @@ V10<-V[,1:dim.q3]
 
 m.pred.q3<-m.moy2+(U10%*%t(S10))%*%S10%*%t(V10)
 
+
 # Question 4 --------------------------------------------------------------
 #Calculez l'erreur absolue moyenne et l'erreur quadratique moyenne.
 
@@ -72,7 +74,7 @@ ABS.q4<-mean(as.matrix(abs(m.NA-m.pred.q3)),na.rm=TRUE)
 RMSE.q4<-sqrt(mean(as.matrix((m.NA-m.pred.q3)^2),na.rm=TRUE))
 
 # Question 5 --------------------------------------------------------------
-#Déterminez le nombre de dimensions optimal (sans appliquer de validation croisée).
+#Determinez le nombre de dimensions optimal (sans appliquer de validation croisee).
 
 dim.vector<-seq(from = 10, to = nrow(m), by = 20)
 RMSE.q5<-data.frame(dimension=dim.vector,RMSE=rep(0,length(dim.vector)),
@@ -101,18 +103,30 @@ g<-ggplot(RMSE.q5,aes(x=dimension))+
        x='Dimensions',y='Erreur',color="Type d'erreur")+
   scale_color_manual(labels=c('RMSE',"MAE"),values=c('RED','BLUE'))
 
-#Sans utilisé de validation croisé, le nombre maximal de dimension 
-#est égale au nombre d'utilisateur
+#Sans utilise de validation croise, le nombre maximal de dimension 
+#est egale au nombre d'utilisateur
 
 # Question 6 --------------------------------------------------------------
 
-#Déterminez le nombre optimal de dimensions, 
-#mais en utilisant cette fois une validation croisée.
+#Determinez le nombre optimal de dimensions, 
+#mais en utilisant cette fois une validation croisee.
+seed<-c(55,75,95,105,222,60,78,4,6,23)
+n_fold<-length(seed)
+suppressWarnings(as.numeric("test")) 
 
-set.seed(55)
-j<-c(m>0)
-j.test<-i
-j.test[sample(length(j),.8*length(j))]<-FALSE
+dim.vector.q6<-seq(from = 2, to = 100, by =1)
+RMSE.q6<-data.frame(dimension=dim.vector.q6,RMSE=rep(0,length(dim.vector.q6)),
+                    MAE=rep(0,length(dim.vector.q6)))
+for(k in seed){
+  
+
+
+set.seed(k)
+j<-m>0
+j.test<-j
+#table(as.vector(j.test),useNA='always')
+j.test[sample(length(j),.90*length(j))]<-FALSE
+#table(j.test,useNA='always')
 j.train<-!j.test
 m.test<-m.NA
 m.train<-m.NA
@@ -134,14 +148,12 @@ m.moy.q6<-m.train
 m.moy.q6[]<-0
 m.moy.q6<-sweep(m.moy.q6,1,moy.row.train,'+')
 
-dim.vector.q6<-seq(from = 10, to = nrow(m), by =50)
-RMSE.q6<-data.frame(dimension=dim.vector.q6,RMSE=rep(0,length(dim.vector.q6)),
-                    MAE=rep(0,length(dim.vector.q6)))
+
 
 
 for(i in RMSE.q6$dimension)
 {
-  print(i)
+  #print(i)
   Si<-sqrt(S.q6[1:i,1:i])
   Ui<-U.q6[,1:i]
   Vi<-V.q6[,1:i]
@@ -149,20 +161,24 @@ for(i in RMSE.q6$dimension)
   m.pred.q6<-m.moy.q6+(Ui%*%t(Si))%*%Si%*%t(Vi)
   
   
-  RMSE.q6$RMSE[which(RMSE.q6$dimension==i)]<-sqrt(mean(as.matrix((m.test[!j.train]-m.pred.q6[!j.train])^2),
-                                                       na.rm=TRUE))
-  RMSE.q6$MAE[which(RMSE.q6$dimension==i)]<-mean(as.matrix(abs(m.test[!j.train]-m.pred.q6[!j.train])),
-                                                 na.rm=TRUE)
+  RMSE.q6$RMSE[which(RMSE.q6$dimension==i)]<-RMSE.q6$RMSE[which(RMSE.q6$dimension==i)]+
+    sqrt(mean(as.matrix((m.test[!j.train]-m.pred.q6[!j.train])^2),na.rm=TRUE))
+  
+  RMSE.q6$MAE[which(RMSE.q6$dimension==i)]<-RMSE.q6$MAE[which(RMSE.q6$dimension==i)]+
+    mean(as.matrix(abs(m.test[!j.train]-m.pred.q6[!j.train])),na.rm=TRUE)
   
 }
 
+}
+RMSE.q6$RMSE<-RMSE.q6$RMSE/n_fold
+RMSE.q6$MAE<-RMSE.q6$MAE/n_fold
 
 g2<-ggplot(RMSE.q6,aes(x=dimension))+
-  geom_point(aes(y=RMSE,color='GREEN'))+
-  geom_point(aes(y=MAE,color='BLACK'))+
+  geom_point(aes(y=RMSE))+
+  geom_point(aes(y=MAE))+
   labs(title='Evolution du RMSE et MAE en fonction du nombre de dimensions',
        x='Dimensions',y='Erreur',color="Type d'erreur")+
-  scale_color_manual(labels=c('RMSE',"MAE"),values=c('GREEN','BLACK'))
+  scale_colour_manual(values=c('black','blue'))
 
 
 
@@ -172,6 +188,9 @@ g2<-ggplot(RMSE.q6,aes(x=dimension))+
 # Question 8 --------------------------------------------------------------
 
 #Comparez la performance de cette approche avec celle d'une approche collaborative de votre choix
-#(avec l'erreur quadratique et erreur absolue moyennes). Utilisez une validation croisée.
+#(avec l'erreur quadratique et erreur absolue moyennes). Utilisez une validation croisee.
+#Utilisons une methode User-User. Similaire au TP 1
+
+
 
 
