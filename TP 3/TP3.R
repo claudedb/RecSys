@@ -128,13 +128,12 @@ result.SVD.q6<-rbind(rep(0,ndimension),rep(0,ndimension))
 RMSE.q6<-data.frame(dimension=dim.vector.q6,RMSE=rep(0,ndimension),
                     MAE=rep(0,ndimension))
 
-cross.validation = function (k){
+cross.validation = function (k,pct,error.type){
 set.seed(k)
-#set.seed(35)
 j<-m>0
 j.test<-j
 #table(as.vector(j.test),useNA='always')
-j.test[sample(length(j),.90*length(j))]<-FALSE
+j.test[sample(length(j),pct*length(j))]<-FALSE
 #table(j.test,useNA='always')
 j.train<-!j.test
 m.test<-m.NA
@@ -157,7 +156,7 @@ m.moy.q6<-m.train
 m.moy.q6[]<-0
 m.moy.q6<-sweep(m.moy.q6,1,moy.row.train,'+')
 
-SVD.cv=function (i)
+SVD.cv=function (i,error.type)
 {
   #print(i)
   Si<-sqrt(S.q6[1:i,1:i])
@@ -166,29 +165,28 @@ SVD.cv=function (i)
   
   m.pred.q6<-m.moy.q6+(Ui%*%t(Si))%*%Si%*%t(Vi)
   
-  
-  RMSE.q6<-sqrt(mean(as.matrix((m.test-m.pred.q6)^2),na.rm=TRUE))
-  
-  MAE.q6<-mean(as.matrix(abs(m.test-m.pred.q6)),na.rm=TRUE)
-  return(list("RMSE"=RMSE.q6,"MAE"=MAE.q6))
+  if(error.type=='RMSE'){
+    RMSE.q6<-sqrt(mean(as.matrix((m.test-m.pred.q6)^2),na.rm=TRUE))
+    return(RMSE.q6)
+  } else if(error.type=='MAE'){
+    MAE.q6<-mean(as.matrix(abs(m.test-m.pred.q6)),na.rm=TRUE)
+  } else{
+    return(0)
+  }
 }
-result<-sapply(RMSE.q6$dimension,SVD.cv)
-result<-matrix(nrow=2,ncol=length(RMSE.q6$dimension),as.double(result))
-result.SVD.q6<-result.SVD.q6+result/n_fold
+result.SVD.q6<-sapply(RMSE.q6$dimension,SVD.cv,error.type=error.type)
 return(result.SVD.q6)
 }
-essai<-sapply(seed,cross.validation)
+RMSE.q6V<-sapply(seed,cross.validation,pct=0.9,error.type='RMSE')
+MAE.q6V<-sapply(seed,cross.validation,pct=0.9,error.type='MAE')
 
 
-RMSE.q6$RMSE<-RMSE.q6$RMSE/n_fold
-RMSE.q6$MAE<-RMSE.q6$MAE/n_fold
+RMSE.q6$RMSE<-rowMeans(RMSE.q6V)
+RMSE.q6$MAE<-rowMeans(MAE.q6V)
 
 g2<-ggplot(RMSE.q6,aes(x=dimension))+
   geom_point(aes(y=RMSE))+
-  geom_point(aes(y=MAE))+
-  labs(title='Evolution du RMSE et MAE en fonction du nombre de dimensions',
-       x='Dimensions',y='Erreur',color="Type d'erreur")+
-  scale_colour_manual(values=c('black','blue'))
+  geom_point(aes(y=MAE),fill='red')
 #Dimension optimal = 10
 
 
@@ -202,65 +200,59 @@ n_fold.q7<-length(seed.q7)
 
 error.q7<-data.frame(seed=seed.q7,RMSE.SVD=rep(0,n_fold.q7),
                     MAE.SVD=rep(0,n_fold.q7),RMSE.ii=rep(0,n_fold.q7),MAE.ii=rep(0,n_fold.q7))
-
-for(s in seed.q7)
-{
-  set.seed(s)
-  l<-m>0
-  l.test<-l
+#Use SVD ndimensions = 10
+cross.validation.SVD7 = function (k,pct,error.type){
+  set.seed(k)
+  j<-m>0
+  j.test<-j
   #table(as.vector(j.test),useNA='always')
-  l.test[sample(length(l),.90*length(l))]<-FALSE
+  j.test[sample(length(j),pct*length(j))]<-FALSE
   #table(j.test,useNA='always')
-  l.train<-!l.test
+  j.train<-!j.test
   m.test<-m.NA
   m.train<-m.NA
   m.train[j.test]<-NA
   m.test[!j.test]<-NA
-  
-  ## Utilisons SVD pour faire des predictions avec 10 dimensions
-  #(minimum trouve au numero 6)
-  
   moy.row.train<-rowSums(m.train,na.rm=TRUE)/rowSums(m>0,na.rm = TRUE)
-  m.norm.q7<-m.train-moy.row.train
-  m.norm.q7[is.na(m.norm.q7)]<-0
-  m.norm.q7<-Matrix(m.norm.q7, sparse=TRUE)
+  m.norm.q6<-m.train-moy.row.train
+  m.norm.q6[is.na(m.norm.q6)]<-0
+  m.norm.q6<-Matrix(m.norm.q6, sparse=TRUE)
   
-  SVD.q7<-svd(m.norm.q7)
+  SVD.q6<-svd(m.norm.q6)
   
-  S.q7<-SVD.q7$d
-  S.q7<-diag(S.q7)
-  U.q7<-SVD.q7$u
-  V.q7<-SVD.q7$v
+  S.q6<-SVD.q6$d
+  S.q6<-diag(S.q6)
+  U.q6<-SVD.q6$u
+  V.q6<-SVD.q6$v
   
-  m.moy.q7<-m.train
-  m.moy.q7[]<-0
-  m.moy.q7<-sweep(m.moy.q7,1,moy.row.train,'+')
+  m.moy.q6<-m.train
+  m.moy.q6[]<-0
+  m.moy.q6<-sweep(m.moy.q6,1,moy.row.train,'+')
   
-  S7<-sqrt(S.q7[1:10,1:10])
-  U7<-U.q7[,1:10]
-  V7<-V.q7[,1:10]
-  
-  m.pred.q7<-m.moy.q7+(U7%*%t(S7))%*%S7%*%t(V7)
-  
-  error.q7$RMSE.SVD[which(error.q7$seed==s)]<-
-    sqrt(mean(as.matrix((m.test[!j.train]-
-                           m.pred.q7[!j.train])^2),na.rm=TRUE))
-  
-  error.q7$MAE.SVD[which(error.q7$seed==s)]<-
-    mean(as.matrix(abs(m.test[!j.train]-
-                         m.pred.q7[!j.train])),na.rm=TRUE)
-  
-  ##Prenons Maintenant une méthode Item-Item
-  sums.q7<-colSums(m.NA^2)
-  dist.eucl<-sweep(sweep(-2*t(m.NA) %*% m.NA,1,sums.q7,"+"),2,sums.q7,"+")
-  
-  #order.partial=function(vec){
-  # idx<-which(vec<=sort(vec,partial=20)[20])
-  #idx[order(vec[idx])][1:20]
-  #}
-  #neighbors<-t(apply(dist.euc,1,order.partial))
-  
+  SVD.cv=function (i=10,error.type)
+  {
+    #print(i)
+    Si<-sqrt(S.q6[1:i,1:i])
+    Ui<-U.q6[,1:i]
+    Vi<-V.q6[,1:i]
+    
+    m.pred.q6<-m.moy.q6+(Ui%*%t(Si))%*%Si%*%t(Vi)
+    
+    if(error.type=='RMSE'){
+      RMSE.q6<-sqrt(mean(as.matrix((m.test-m.pred.q6)^2),na.rm=TRUE))
+      return(RMSE.q6)
+    } else if(error.type=='MAE'){
+      MAE.q6<-mean(as.matrix(abs(m.test-m.pred.q6)),na.rm=TRUE)
+    } else{
+      return(0)
+    }
+  }
+  result.SVD.q6<-sapply(10,SVD.cv,error.type=error.type)
+  return(result.SVD.q6)
 }
+
+RMSE.SVD7<-sapply(seed.q7,cross.validation.SVD7,pct=0.9,error.type='RMSE')
+MAE.SVD7<-sapply(seed.q7,cross.validation.SVD7,pct=0.9,error.type='MAE')
 
 
 
