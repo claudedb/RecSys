@@ -38,7 +38,8 @@ term.count$terms <- terms.data[term.count$terms.id, ]
 
 # Matrix Transformation ---------------------------------------------------
 n.courses <- ncol(m.poly)
-tf.idf <- (1 + log(m.poly)) * log (n.courses/(rowSums(m.poly > 0)+1))
+log.m <- log(m.poly)
+tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
 
 pij <- m.poly / rowSums(m.poly)
 global.entropy <- 1 + rowSums((pij * log2(pij) * pij)/log2(n.courses))
@@ -47,14 +48,14 @@ log.entropy <- log2(1 + m.poly) * global.entropy
 
 # LSA ---------------------------------------------------------------------
 
-lsa.startTime <- Sys.time()
-lsaSpace.tfidf <- lsa(tf.idf,dims=dimcalc_share())
-lsaSpace.tfidf <- as.textmatrix(lsaSpace.tfidf)
-lsaSpace.entropy <- lsa(log.entropy, dims=dimcalc_share())
-lsaSpace.entropy <- as.textmatrix(lsaSpace.entropy)
-lsa.endTime <- Sys.time()
-lsa.elapsedTime <- lsa.endTime-lsa.startTime
-lsa.elapsedTimes
+#lsa.startTime <- Sys.time()
+#lsaSpace.tfidf <- lsa(tf.idf,dims=dimcalc_share())
+#lsaSpace.tfidf <- as.textmatrix(lsaSpace.tfidf)
+#lsaSpace.entropy <- lsa(log.entropy, dims=dimcalc_share())
+#lsaSpace.entropy <- as.textmatrix(lsaSpace.entropy)
+#lsa.endTime <- Sys.time()
+#lsa.elapsedTime <- lsa.endTime-lsa.startTime
+#lsa.elapsedTimes
 
 
 # Evaluation des methodes -------------------------------------------------
