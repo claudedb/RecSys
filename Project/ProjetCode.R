@@ -12,7 +12,7 @@ setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
-m.text <- sparseMatrix(text.data$terms,text.data$courses,x=text.data$n)
+m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
 
 courses.data<-read.table('data/out.docs',sep="/")
 colnames(courses.data)<-c('university','code')
@@ -26,37 +26,50 @@ rownames(m.text) <- as.vector(terms.data[,1])
 # Pour l'instant nous n'avons pas de facon de tous les analyses
 id.poly <- which(courses.data$university=="Poly")
 id.hec <- which(courses.data$universtity=="HEC")
-m.poly<-m.text[,id.poly]
-m.poly<-m.poly[rowSums(m.poly)>0,]
+id.udm <- which(courses.data$university== "UdM")
+id.uqam <- which(courses.data$university == "UQAM")
+# m.poly<-m.text[,c(id.poly,id.hec,id.udm)]
+m.poly <- m.text[,id.poly]
+m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 # Similarite terme-terme --------------------------------------------------
 
 #On calcul la similarite entre les cours avec les termes directement
+
 #Compte des termes pour poly
-term.count <- text.data[ courses.id %in% id.poly,.(total=sum(n)),by = terms.id ]
-term.count$terms <- terms.data[term.count$terms.id, ]
+term.count <- text.data[courses.id %in% id.poly,.(total=sum(n),count=.N),by = terms.id ]
+term.count$term <- terms.data[term.count$terms.id,]
+
+
+
+
 
 # Matrix Transformation ---------------------------------------------------
 n.courses <- ncol(m.poly)
 log.m <- log(m.poly)
+log.m[is.infinite(log.m)] <- 0
 tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
 
 pij <- m.poly / rowSums(m.poly)
-global.entropy <- 1 + rowSums((pij * log2(pij) * pij)/log2(n.courses))
+log2.pij <- log2(pij)
+log2.pij[is.infinite(log2.pij)] <- 0
+global.entropy <- 1 + rowSums((pij * log2.pij * pij)/log2(n.courses))
 log.entropy <- log2(1 + m.poly) * global.entropy
 
 
 # LSA ---------------------------------------------------------------------
 
-#lsa.startTime <- Sys.time()
-#lsaSpace.tfidf <- lsa(tf.idf,dims=dimcalc_share())
+lsa.startTime <- Sys.time()
+lsaSpace.tfidf <- lsa(tf.idf,dims=dimcalc_share())
 #lsaSpace.tfidf <- as.textmatrix(lsaSpace.tfidf)
-#lsaSpace.entropy <- lsa(log.entropy, dims=dimcalc_share())
+lsaSpace.entropy <- lsa(log.entropy, dims=dimcalc_share())
 #lsaSpace.entropy <- as.textmatrix(lsaSpace.entropy)
-#lsa.endTime <- Sys.time()
-#lsa.elapsedTime <- lsa.endTime-lsa.startTime
-#lsa.elapsedTimes
+lsa.endTime <- Sys.time()
+lsa.elapsedTime <- lsa.endTime-lsa.startTime
+lsa.elapsedTime
 
+X.lsa.tfidf <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
+X.lsa.ent <- lsaSpace.entropy$tk %*% diag(lsaSpace.entropy$sk) %*% t(lsaSpace.entropy$dk)
 
 # Evaluation des methodes -------------------------------------------------
 
