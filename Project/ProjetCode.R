@@ -54,13 +54,13 @@ term.count$term <- terms.data[term.count$terms.id,]
 
 # On peut utiliser la distance euclidienne pour compute les 20 neirest neighbours
 
-sums_2<-colSums(m.poly^2)
-dist_eucl<-sweep(sweep(-2*t(m.poly) %*% m.poly,1,sums_2,"+"),2,sums_2,"+")
-neighbors<-t(apply(dist_eucl,1,order.partial))
+#sums_2<-colSums(m.poly^2)
+#dist_eucl<-sweep(sweep(-2*t(m.poly) %*% m.poly,1,sums_2,"+"),2,sums_2,"+")
+#neighbors<-t(apply(dist_eucl,1,order.partial))
 
-#Similarités avec le cosinus 
-cosinus.tt <- cosinus.vm(m.poly,m.poly)
-neighbors.tt <-t(apply(cosinus.tt,1,order.partial))
+# Similarités avec le cosinus 
+cosinus <- cosinus.vm(m.poly,m.poly)
+neighbors <-t(apply(cosinus,1,order.partial))
 
 
 # Matrix Transformation ---------------------------------------------------
@@ -68,7 +68,7 @@ n.courses <- ncol(m.poly)
 log.m <- log(m.poly)
 log.m[is.infinite(log.m)] <- 0
 tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
-
+#tf.idf <- m.poly * log(n.courses/(rowSums(m.poly > 0)+1))
 pij <- m.poly / rowSums(m.poly)
 log2.pij <- log2(pij)
 log2.pij[is.infinite(log2.pij)] <- 0
@@ -78,34 +78,47 @@ log.entropy <- log2(1 + m.poly) * global.entropy
 
 # TF-IDF ------------------------------------------------------------------
 
-sums2.TFIDF<-colSums(tf.idf^2)
-dist.eucl.tfidf<-sweep(sweep(-2*t(tf.idf) %*% tf.idf,1,sums2.TFIDF,"+"),2,sums2.TFIDF,"+")
-neighbors.tfidf<-t(apply(dist.eucl.tfidf,1,order.partial))
+cosinus.tfidf <-cosinus.vm(tf.idf,tf.idf)
+neighbors.tfidf <- t(apply(cosinus.tfidf,1,order.partial))
 
 # log entropy -------------------------------------------------------------
 
-sums2.ent<-colSums(log.entropy^2)
-dist.eucl.ent<-sweep(sweep(-2*t(log.entropy) %*% log.entropy,1,sums2.ent,"+"),2,sums2.ent,"+")
-neighbors.ent<-t(apply(dist.eucl.ent,1,order.partial))
-
+cosinus.ent <- cosinus.vm(log.entropy,log.entropy)
+neighbors.ent<-t(apply(cosinus.ent,1,order.partial))
 
 # LSA ---------------------------------------------------------------------
 
 lsa.startTime <- Sys.time()
 lsaSpace.tfidf <- lsa(tf.idf,dims=50)
-#lsaSpace.tfidf <- as.textmatrix(lsaSpace.tfidf)
-#lsaSpace.entropy <- lsa(log.entropy, dims=50)
-#lsaSpace.entropy <- as.textmatrix(lsaSpace.entropy)
+X.lsa.tfidf <- as.textmatrix(lsaSpace.tfidf)
+lsaSpace.entropy <- lsa(log.entropy, dims=50)
+X.lsa.ent <- as.textmatrix(lsaSpace.entropy)
+X.lsa <- as.textmatrix(lsa(m.poly,dims=50))
 lsa.endTime <- Sys.time()
 lsa.elapsedTime <- lsa.endTime-lsa.startTime
 lsa.elapsedTime
 
-X.lsa <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
-sums2.lsa<-colSums(X.lsa^2)
-dist.eucl.lsa<-sweep(sweep(-2*t(X.lsa) %*% X.lsa,1,sums2.lsa,"+"),2,sums2.lsa,"+")
-neighbors.lsa<-t(apply(dist.eucl.lsa,1,order.partial))
+cosinus.lsa <- cosinus.vm(X.lsa,X.lsa)
+neighbors.lsa <-t(apply(cosinus.lsa,1,order.partial))
+
+# X.lsa.tfidf <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
+cosinus.lsa.tfidf <- cosinus.vm(X.lsa.tfidf,X.lsa.tfidf)
+neighbors.lsa.tfidf<-t(apply(cosinus.lsa.tfidf,1,order.partial))
+
+# X.lsa.ent2 <- lsaSpace.entropy$tk %*% diag(lsaSpace.entropy$sk) %*% t(lsaSpace.entropy$dk)
+cosinus.lsa.ent <- cosinus.vm(X.lsa.ent,X.lsa.ent)
+neighbors.lsa.ent <- t(apply(cosinus.lsa.ent,1,order.partial))
 
 # Evaluation des methodes -------------------------------------------------
+ 
+#Choisissons 10 cours a evaluer
+id.cours1 <- which(courses.data.poly$code=="AER2100")
 
+comparaison <- cbind(courses.data.poly[neighbors[id.cours1,],],
+                     courses.data.poly[neighbors.tfidf[id.cours1,],],
+                     courses.data.poly[neighbors.ent[id.cours1,],],
+                     courses.data.poly[neighbors.lsa[id.cours1,],],
+                     courses.data.poly[neighbors.lsa.tfidf[id.cours1,],],
+                     courses.data.poly[neighbors.lsa.ent[id.cours1,],])[,c(2,4,6,8,10,12)]
 
-
+colnames(comparaison) <-c('terme.terme','tf.idf','log.entropy','lsa','lsa.tfidf','lsa.entropy')
