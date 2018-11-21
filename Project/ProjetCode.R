@@ -18,8 +18,8 @@ cosinus.vm <- function(v,m) {
   return(a)
 }
 
-#setwd('D:/Polytechnique/A2018/SystRec/TP1')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
@@ -67,7 +67,7 @@ neighbors.tt <-t(apply(cosinus.tt,1,order.partial))
 n.courses <- ncol(m.poly)
 log.m <- log(m.poly)
 log.m[is.infinite(log.m)] <- 0
-tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
+tf.idf <- (1+log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
 
 pij <- m.poly / rowSums(m.poly)
 log2.pij <- log2(pij)
@@ -107,5 +107,8 @@ neighbors.lsa<-t(apply(dist.eucl.lsa,1,order.partial))
 
 # Evaluation des methodes -------------------------------------------------
 
+#Vérification de la symétrie de la matrice de cosinus
+verif.sym=sum(cosinus.tt-t(cosinus.tt))
+#Donne zéro: oui! 
 
-
+#Vérification des 10 termes ayant le plus petit TF-IDF
