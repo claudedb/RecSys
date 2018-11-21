@@ -13,6 +13,16 @@ order.partial=function(vec)
   idx[order(vec[idx])][2:11]
 }
 
+max.nindex <- function(m, n=5) {
+  i <- order(m, decreasing=TRUE)
+  return(i[1:n])
+}
+
+min.nindex <- function(m, n=5) {
+  i <- order(m, decreasing=FALSE)
+  return(i[1:n])
+}
+
 cosinus.vm <- function(v,m) {
   n <- sqrt(colSums(m^2));k= sqrt(rowSums(t(v^2))); p=(t(v) %*% m)/k; a=t(p)/n
   return(a)
@@ -94,7 +104,7 @@ neighbors.ent<-t(apply(dist.eucl.ent,1,order.partial))
 lsa.startTime <- Sys.time()
 lsaSpace.tfidf <- lsa(tf.idf,dims=50)
 #lsaSpace.tfidf <- as.textmatrix(lsaSpace.tfidf)
-#lsaSpace.entropy <- lsa(log.entropy, dims=50)
+lsaSpace.entropy <- lsa(log.entropy, dims=50)
 #lsaSpace.entropy <- as.textmatrix(lsaSpace.entropy)
 lsa.endTime <- Sys.time()
 lsa.elapsedTime <- lsa.endTime-lsa.startTime
@@ -111,4 +121,13 @@ neighbors.lsa<-t(apply(dist.eucl.lsa,1,order.partial))
 verif.sym=sum(cosinus.tt-t(cosinus.tt))
 #Donne zéro: oui! 
 
-#Vérification des 10 termes ayant le plus petit TF-IDF
+#Vérification des 100 termes extrêmes pour TF-IDF
+tf.idf.tot=rowSums(tf.idf)
+mots.top100=tf.idf.tot[max.nindex(tf.idf.tot,100)]
+mots.least100=tf.idf.tot[min.nindex(tf.idf.tot,100)]
+name.top100=names(mots.top100)
+name.least100=names(mots.least100)
+tableau.top=data.frame(mots=name.top100)
+tableau.least=data.frame(mots=name.least100)
+
+
