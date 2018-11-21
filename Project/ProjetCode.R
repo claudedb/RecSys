@@ -36,12 +36,12 @@ rownames(m.text) <- as.vector(terms.data[,1])
 
 # Nous garderons seulement les cours a la polyy
 # Pour l'instant nous n'avons pas de facon de tous les analyses
-id.poly <- which(courses.data$university=="Poly")
-id.hec <- which(courses.data$universtity=="HEC")
+id.hec <- which(courses.data$universtity== "HEC")
+id.poly <- which(courses.data$university== "Poly")
 id.udm <- which(courses.data$university== "UdM")
 id.uqam <- which(courses.data$university == "UQAM")
-m.poly<-m.text[,c(id.poly,id.hec,id.udm)]
-# m.poly <- m.text[,id.poly]
+#m.poly<-m.text[,c(id.poly,id.hec,id.udm)]
+m.poly <- m.text[,id.poly]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 # Similarite terme-terme --------------------------------------------------
@@ -92,7 +92,7 @@ neighbors.ent<-t(apply(dist.eucl.ent,1,order.partial))
 # LSA ---------------------------------------------------------------------
 
 lsa.startTime <- Sys.time()
-#lsaSpace.tfidf <- lsa(tf.idf,dims=50)
+lsaSpace.tfidf <- lsa(tf.idf,dims=50)
 #lsaSpace.tfidf <- as.textmatrix(lsaSpace.tfidf)
 #lsaSpace.entropy <- lsa(log.entropy, dims=50)
 #lsaSpace.entropy <- as.textmatrix(lsaSpace.entropy)
