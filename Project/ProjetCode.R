@@ -32,8 +32,8 @@ min.nindex <- function(m, n=5) {
   return(i[1:n])
 }
 
-setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
@@ -56,6 +56,7 @@ id.udm <- which(courses.data$university== "UdM")
 id.uqam <- which(courses.data$university == "UQAM")
 #m.poly<-m.text[,c(id.poly,id.hec,id.udm)]
 m.poly <- m.text[,id.poly]
+m.poly <- m.poly[,colSums(m.poly) > 20]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 # Similarite terme-terme --------------------------------------------------
@@ -126,16 +127,26 @@ neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
 # Evaluation des methodes -------------------------------------------------
  
 #Choisissons 10 cours a evaluer
-id.cours1 <- which(courses.data.poly$code=="ELE1403")
+liste.cours <- c('CIV4510','CIV1210','ELE3500','ELE1403','IND2601',
+                 'AER2430','INF4705','MEC3360','MEC6318','MTH2312')
+for (cours in liste.cours)
+{
+  #cours1 <- "ELE1403"
+  id.cours1 <- which(courses.data.poly$code==cours)
+  
+  comparaison <- cbind(courses.data.poly[neighbors[id.cours1,],],
+                       courses.data.poly[neighbors.tfidf[id.cours1,],],
+                       courses.data.poly[neighbors.ent[id.cours1,],],
+                       courses.data.poly[neighbors.lsa[id.cours1,],],
+                       courses.data.poly[neighbors.lsa.tfidf[id.cours1,],],
+                       courses.data.poly[neighbors.lsa.ent[id.cours1,],])[,c(2,4,6,8,10,12)]
+  
+  colnames(comparaison) <-c('terme.terme','tf.idf','log.entropy','lsa','lsa.tfidf','lsa.entropy')
+  
+  write.csv(comparaison, paste("CSVs/", cours,'.csv',sep = ''))
+  
+}
 
-comparaison <- cbind(courses.data.poly[neighbors[id.cours1,],],
-                     courses.data.poly[neighbors.tfidf[id.cours1,],],
-                     courses.data.poly[neighbors.ent[id.cours1,],],
-                     courses.data.poly[neighbors.lsa[id.cours1,],],
-                     courses.data.poly[neighbors.lsa.tfidf[id.cours1,],],
-                     courses.data.poly[neighbors.lsa.ent[id.cours1,],])[,c(2,4,6,8,10,12)]
-
-colnames(comparaison) <-c('terme.terme','tf.idf','log.entropy','lsa','lsa.tfidf','lsa.entropy')
 
 
 #Vérification de la symétrie de la matrice de cosinus
