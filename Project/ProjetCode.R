@@ -6,7 +6,7 @@
 #On utilise ces deux lignes pour charger et verifier que les packages necessaires sont bien installes
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext)
-
+rm(list=ls())
 order.partial=function(vec)
   {
   idx<-which(vec<=sort(vec,partial=11)[11])
@@ -22,14 +22,18 @@ max.nindex <- function(m, n=5) {
   i <- order(m, decreasing=TRUE)
   return(i[1:n])
 }
+max.nindex.corr <- function(m, n=11) {
+  i <- order(m, decreasing=TRUE)
+  return(i[2:n])
+}
 
 min.nindex <- function(m, n=5) {
   i <- order(m, decreasing=FALSE)
   return(i[1:n])
 }
 
-#setwd('D:/Polytechnique/A2018/SystRec/TP1')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
@@ -69,8 +73,8 @@ term.count$term <- terms.data[term.count$terms.id,]
 #neighbors<-t(apply(dist_eucl,1,order.partial))
 
 # Similarités avec le cosinus 
-cosinus <- cosinus.vm(m.poly,m.poly)
-neighbors <-t(apply(cosinus,1,order.partial))
+correlation <- cor(as.matrix(m.poly),method="spearman")
+neighbors <-t(apply(correlation,1,max.nindex.corr))
 
 
 # Matrix Transformation ---------------------------------------------------
@@ -88,13 +92,13 @@ log.entropy <- log2(1 + m.poly) * global.entropy
 
 # TF-IDF ------------------------------------------------------------------
 
-cosinus.tfidf <-cosinus.vm(tf.idf,tf.idf)
-neighbors.tfidf <- t(apply(cosinus.tfidf,1,order.partial))
+correlation.tfidf <-cor(as.matrix(tf.idf),method="spearman")
+neighbors.tfidf <- t(apply(correlation.tfidf,1,max.nindex.corr))
 
 # log entropy -------------------------------------------------------------
 
-cosinus.ent <- cosinus.vm(log.entropy,log.entropy)
-neighbors.ent<-t(apply(cosinus.ent,1,order.partial))
+correlation.ent <- cor(as.matrix(log.entropy),method="spearman")
+neighbors.ent<-t(apply(correlation.ent,1,max.nindex.corr))
 
 # LSA ---------------------------------------------------------------------
 
@@ -108,21 +112,21 @@ lsa.endTime <- Sys.time()
 lsa.elapsedTime <- lsa.endTime-lsa.startTime
 lsa.elapsedTime
 
-cosinus.lsa <- cosinus.vm(X.lsa,X.lsa)
-neighbors.lsa <-t(apply(cosinus.lsa,1,order.partial))
+correlation.lsa <- cor(as.matrix(X.lsa),method="spearman")
+neighbors.lsa <-t(apply(correlation.lsa,1,max.nindex.corr))
 
-# X.lsa.tfidf <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
-cosinus.lsa.tfidf <- cosinus.vm(X.lsa.tfidf,X.lsa.tfidf)
-neighbors.lsa.tfidf<-t(apply(cosinus.lsa.tfidf,1,order.partial))
+#X.lsa.tfidf <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
+correlation.lsa.tfidf <- cor(as.matrix(X.lsa.tfidf),method="spearman")
+neighbors.lsa.tfidf<-t(apply(correlation.lsa.tfidf,1,max.nindex.corr))
 
 # X.lsa.ent2 <- lsaSpace.entropy$tk %*% diag(lsaSpace.entropy$sk) %*% t(lsaSpace.entropy$dk)
-cosinus.lsa.ent <- cosinus.vm(X.lsa.ent,X.lsa.ent)
-neighbors.lsa.ent <- t(apply(cosinus.lsa.ent,1,order.partial))
+correlation.lsa.ent <- cor(as.matrix(X.lsa.ent),method="spearman")
+neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
 
 # Evaluation des methodes -------------------------------------------------
  
 #Choisissons 10 cours a evaluer
-id.cours1 <- which(courses.data.poly$code=="AER2100")
+id.cours1 <- which(courses.data.poly$code=="ELE1403")
 
 comparaison <- cbind(courses.data.poly[neighbors[id.cours1,],],
                      courses.data.poly[neighbors.tfidf[id.cours1,],],
@@ -135,7 +139,7 @@ colnames(comparaison) <-c('terme.terme','tf.idf','log.entropy','lsa','lsa.tfidf'
 
 
 #Vérification de la symétrie de la matrice de cosinus
-verif.sym=sum(cosinus.tt-t(cosinus.tt))
+verif.sym=sum(cosinus.tfidf-t(cosinus.tfidf))
 #Donne zéro: oui! 
 
 #Vérification des 100 termes extrêmes pour TF-IDF
@@ -146,3 +150,8 @@ name.top100=names(mots.top100)
 name.least100=names(mots.least100)
 tableau.top=data.frame(mots=name.top100)
 tableau.least=data.frame(mots=name.least100)
+
+
+#Infos nices
+#On sort les tf-idf maximaux
+tf.idf[max.nindex(tf.idf[,93],10),93]
