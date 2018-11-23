@@ -18,11 +18,11 @@ cosinus.vm <- function(v,m) {
   return(a)
 }
 
-max.nindex <- function(m, n=5) {
+max.nindex <- function(m, n=10) {
   i <- order(m, decreasing=TRUE)
   return(i[1:n])
 }
-max.nindex.corr <- function(m, n=11) {
+max.nindex.corr <- function(m, n=6) {
   i <- order(m, decreasing=TRUE)
   return(i[2:n])
 }
@@ -32,8 +32,8 @@ min.nindex <- function(m, n=5) {
   return(i[1:n])
 }
 
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
@@ -59,6 +59,10 @@ m.poly <- m.text[,id.poly]
 m.poly <- m.poly[,colSums(m.poly) > 20]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
 
+#À décommenter si on veut faire le focus sur le cours 
+#ELE3500
+#m.poly=cbind(m.poly[,191:302],m.poly[,1:190],m.poly[,303:1159])
+
 # Similarite terme-terme --------------------------------------------------
 
 #On calcul la similarite entre les cours avec les termes directement
@@ -73,8 +77,9 @@ term.count$term <- terms.data[term.count$terms.id,]
 #dist_eucl<-sweep(sweep(-2*t(m.poly) %*% m.poly,1,sums_2,"+"),2,sums_2,"+")
 #neighbors<-t(apply(dist_eucl,1,order.partial))
 
-# Similarités avec le cosinus 
+# Similarités avec la correlation 
 correlation <- cor(as.matrix(m.poly),method="spearman")
+#correlation=cosinus.vm(as.matrix(m.poly),as.matrix(m.poly))
 neighbors <-t(apply(correlation,1,max.nindex.corr))
 
 
@@ -127,19 +132,18 @@ neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
 # Evaluation des methodes -------------------------------------------------
  
 #Choisissons 10 cours a evaluer
-liste.cours <- c('CIV4510','CIV1210','ELE3500','ELE1403','IND2601',
-                 'AER2430','INF4705','MEC3360','MEC6318','MTH2312')
+liste.cours <- c("MTH1006","MEC1210","MEC2115","AR320","INF2010","IND4704")
 for (cours in liste.cours)
 {
   #cours1 <- "ELE1403"
-  id.cours1 <- which(courses.data.poly$code==cours)
+  id.cours1 <- which(colnames(m.poly)==cours)
   
-  comparaison <- cbind(courses.data.poly[neighbors[id.cours1,],],
-                       courses.data.poly[neighbors.tfidf[id.cours1,],],
-                       courses.data.poly[neighbors.ent[id.cours1,],],
-                       courses.data.poly[neighbors.lsa[id.cours1,],],
-                       courses.data.poly[neighbors.lsa.tfidf[id.cours1,],],
-                       courses.data.poly[neighbors.lsa.ent[id.cours1,],])[,c(2,4,6,8,10,12)]
+  comparaison <- cbind(colnames(m.poly)[neighbors[id.cours1,]],
+                       colnames(m.poly)[neighbors.tfidf[id.cours1,]],
+                       colnames(m.poly)[neighbors.ent[id.cours1,]],
+                       colnames(m.poly)[neighbors.lsa[id.cours1,]],
+                       colnames(m.poly)[neighbors.lsa.tfidf[id.cours1,]],
+                       colnames(m.poly)[neighbors.lsa.ent[id.cours1,]])
   
   colnames(comparaison) <-c('terme.terme','tf.idf','log.entropy','lsa','lsa.tfidf','lsa.entropy')
   
@@ -166,3 +170,8 @@ tableau.least=data.frame(mots=name.least100)
 #Infos nices
 #On sort les tf-idf maximaux
 tf.idf[max.nindex(tf.idf[,93],10),93]
+
+#top.tfidf=t(apply(tf.idf,1,max.nindex))
+
+
+
