@@ -60,8 +60,8 @@ m.poly <- m.poly[,colSums(m.poly) > 20]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 #À décommenter si on veut faire le focus sur le cours 
-#ELE3500
-#m.poly=cbind(m.poly[,191:302],m.poly[,1:190],m.poly[,303:1159])
+#IND4707
+m.poly=cbind(m.poly[,636:737],m.poly[,1:635],m.poly[,738:1159])
 
 # Similarite terme-terme --------------------------------------------------
 
@@ -81,13 +81,16 @@ term.count$term <- terms.data[term.count$terms.id,]
 correlation <- cor(as.matrix(m.poly),method="spearman")
 #correlation=cosinus.vm(as.matrix(m.poly),as.matrix(m.poly))
 neighbors <-t(apply(correlation,1,max.nindex.corr))
-
+correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
+correlation.termes[is.na(correlation.termes)]=-1
+neighbors.termes <-t(apply(correlation.termes,1,max.nindex.corr))
 
 # Matrix Transformation ---------------------------------------------------
 n.courses <- ncol(m.poly)
 log.m <- log(m.poly)
 log.m[is.infinite(log.m)] <- 0
 tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
+#tf.idf[m.poly==0]=0
 #tf.idf <- m.poly * log(n.courses/(rowSums(m.poly > 0)+1))
 pij <- m.poly / rowSums(m.poly)
 log2.pij <- log2(pij)
@@ -120,10 +123,14 @@ lsa.elapsedTime
 
 correlation.lsa <- cor(as.matrix(X.lsa),method="spearman")
 neighbors.lsa <-t(apply(correlation.lsa,1,max.nindex.corr))
+correlation.termes.lsa=cor(t(as.matrix(X.lsa)),method="spearman")
+correlation.termes.lsa[is.na(correlation.termes.lsa)]=-1
+neighbors.termes.lsa <-t(apply(correlation.termes.lsa,1,max.nindex.corr))
 
 #X.lsa.tfidf <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
 correlation.lsa.tfidf <- cor(as.matrix(X.lsa.tfidf),method="spearman")
 neighbors.lsa.tfidf<-t(apply(correlation.lsa.tfidf,1,max.nindex.corr))
+
 
 # X.lsa.ent2 <- lsaSpace.entropy$tk %*% diag(lsaSpace.entropy$sk) %*% t(lsaSpace.entropy$dk)
 correlation.lsa.ent <- cor(as.matrix(X.lsa.ent),method="spearman")
@@ -133,6 +140,7 @@ neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
  
 #Choisissons 10 cours a evaluer
 liste.cours <- c("MTH1006","MEC1210","MEC2115","AR320","INF2010","IND4704")
+index.cours=c(907,739,747,36,632,548)
 for (cours in liste.cours)
 {
   #cours1 <- "ELE1403"
@@ -154,7 +162,7 @@ for (cours in liste.cours)
 
 
 #Vérification de la symétrie de la matrice de cosinus
-verif.sym=sum(cosinus.tfidf-t(cosinus.tfidf))
+#verif.sym=sum(cosinus.tfidf-t(cosinus.tfidf))
 #Donne zéro: oui! 
 
 #Vérification des 100 termes extrêmes pour TF-IDF
@@ -169,9 +177,53 @@ tableau.least=data.frame(mots=name.least100)
 
 #Infos nices
 #On sort les tf-idf maximaux
-tf.idf[max.nindex(tf.idf[,93],10),93]
+tf.idf.reduit=tf.idf[,index.cours]
+tf.idf.max=t(apply(t(tf.idf.reduit),1,max.nindex))
+mat.tf.idf=matrix(NA,nrow=nrow(tf.idf.max),ncol=ncol(tf.idf.max))
 
-#top.tfidf=t(apply(tf.idf,1,max.nindex))
+
+
+for (i in 1:dim(tf.idf.max)[1]){
+  mat.tf.idf[i,]=rownames(m.poly)[tf.idf.max[i,]]
+}
+rownames(mat.tf.idf)=rownames(tf.idf.max)
+
+
+mat.termes=matrix(NA,nrow=nrow(neighbors.termes),ncol=ncol(neighbors.termes))
+mat.termes.lsa=matrix(NA,nrow=nrow(neighbors.termes.lsa),ncol=ncol(neighbors.termes.lsa))
+for (i in 1:dim(neighbors.termes)[1]){
+  mat.termes[i,]=rownames(m.poly)[neighbors.termes[i,]]
+  mat.termes.lsa[i,]=rownames(m.poly)[neighbors.termes.lsa[i,]]
+}
+rownames(mat.termes)=rownames(neighbors.termes)
+rownames(mat.termes.lsa)=rownames(neighbors.termes.lsa)
+
+#On prend 2 mots qui décrit chaque cours pris dans notre évaluation
+mots=c(1393,2328,2033,237,
+       2160,2684,1210,4570,4032,4218,610,
+       3902,4510)
+mat.termes.reduit=mat.termes[mots,]
+mat.termes.lsa.reduit=mat.termes.lsa[mots,]
+#Stats de base 
+
+
+#On voit que le termes qui apparait le plus souvent est 
+#de et il est présent 11308 fois dans les 1159 descriptions
+
+which.max(rowSums(m.poly))
+max(rowSums(m.poly))
+#En moyenne, notre terme max se retrouve 9.8 fois par description
+max(rowSums(m.poly))/dim(m.poly)[2]
+
+#% de réduction de la matrice 
+dim(m.poly)[1]/dim(m.text)[1]
+dim(m.poly)[2]/dim(m.text)[2]
+
+
+#Moyenne de mots dans les description
+mean(colSums(m.poly))
+sd(colSums(m.poly))
+
 
 
 
