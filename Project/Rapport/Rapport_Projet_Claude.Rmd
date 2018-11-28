@@ -1,0 +1,193 @@
+---
+title: "Rapport Projet: Approche Contenu pour recommendation de cours à Polytechnique"
+author: "Claude Demers-Belanger (1534217) & Mikael Perreault (1741869)"
+date: "November 30, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!require("pacman")) install.packages("pacman")
+pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext)
+rm(list=ls())
+order.partial=function(vec)
+  {
+  idx<-which(vec<=sort(vec,partial=11)[11])
+  idx[order(vec[idx])][2:11]
+}
+
+cosinus.vm <- function(v,m) {
+  n <- sqrt(colSums(m^2));k= sqrt(rowSums(t(v^2))); p=(t(v) %*% m)/k; a=t(p)/n
+  return(a)
+}
+
+max.nindex <- function(m, n=10) {
+  i <- order(m, decreasing=TRUE)
+  return(i[1:n])
+}
+max.nindex.corr <- function(m, n=6) {
+  i <- order(m, decreasing=TRUE)
+  return(i[2:n])
+}
+
+min.nindex <- function(m, n=5) {
+  i <- order(m, decreasing=FALSE)
+  return(i[1:n])
+}
+```
+
+# Introduction
+
+Dans la cadre du cours LOG6308: Système de Recommendation, nous avons conçu un système de recommendation de cours pour Polytechnique de Montrèal qui prend comme entrée un cours qui aurait été apprécié par l'utilisateur et lui retourne n cours recommandés. Nous avons, pour l'instant, fixé le nombre de recommandations à 5 cours.
+
+## Motivation
+
+Plusieurs raisons nous ont poussé à réaliser ce projet.
+
+* Créer un outil de comparaison et de recommandation de cours. En ce moment, les outils de recherche de cours sont limités. Ils consistent uniquement d'outil de recherche par mots clés.
+
+* Obtenir un moyen de recommander des cours hors cursus. Les étudiants présentement ont facilement accès à la liste de cours de leur cursus, mais parfois certains étudiants pourraient vouloir suivre des cours hors cursus plus centrés sur leurs intérêts
+
+* En faisant ce projet, nous avons mis en place les premières étapes pour le design d'un système de recommandations de cours, mais lors de ce projet, nous avons aussi imaginé quelles seraient les étapes suivantes pour avoir un sytème complet et efficace.
+
+* Apprendre les rudiments de l'analyse textuel. Ces concepts ont été vaguement mentionné dans le cours, mais nous avions un désir de pousser nos connaissances davantage.
+
+## Dataset
+
+Le set de données original est composé des descriptions de tous les cours de U de M, UQAM, HEC et Polytechnique. Chaque ficher .txt de description comprend le titre du cours et sa description. Nous avons remarqué lors de nos analyse certaines irrégularités dans les descriptions en ce qui attrait au traitement des accents. Parfois certains mots avaient des accents retirés simplement, d'autres avaient la lettre complètement retirée.
+
+Pour notre projet, nous avons décidé de conserver seulement les cours de polytechnique pour limiter le temps de calcul. Aussi, nous avons retiré tous les cours dont la description était de moins de 20 mots. Ce qui équivalait à 2 écarts types sous la moyenne du nombre de mots par description. Pour plus de détails sur la moyenne et l'écart type du nombre de mot, voir la section [Analyse Exploratoire des Données](#anchor). 
+
+De plus, lors de la création de la matrice Termes - Documents (Termes - Cours dans notre cas) un stemming a été réalisé pour retirer les marques de pluriels et de feminin. Cependant, le stemming ne semblait pas régulier en raison ceci probablement du au fait que dans les descriptions originales, certains mots avaient été coupé de façon irrégulière. Nous n'avons pas tenu des irrégularités dans nos calculs. Dans un travail futur, un analyse en détail pourrait être faite.
+
+En résumé, nous utiliserons, pour nos calculs, la matrice terme (ligne) cours (colonne) de polytechnique sans les cours qui ont été retiré en raison des descriptions trop courtes. De plus, pour simplifier la matrice, nous avons retiré les mots qui ne figuraient dans aucune description de poly.
+
+Dans la section suivante, nous ferons un exploration de la matrice pour tenter de mieux comprendre le dataset.
+
+# Analyse Exploratoire des Données
+
+```{r text.data m.text courses.data courses.data.poly terms.data id.poly m.poly, echo=F}
+#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+# Data Load
+text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
+colnames(text.data)<-c('courses.id','terms.id','n')
+m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
+
+courses.data<-read.table('data/out.docs',sep="/")
+colnames(courses.data)<-c('university','code')
+courses.data.poly <-courses.data[courses.data$university=='Poly',]
+
+terms.data<-read.table('data/out.terms')
+
+colnames(m.text) <- as.vector(courses.data[,2])
+rownames(m.text) <- as.vector(terms.data[,1])
+
+# Nous garderons seulement les cours a la polyy
+# Pour l'instant nous n'avons pas de facon de tous les analyses
+id.poly <- which(courses.data$university== "Poly")
+m.poly <- m.text[,id.poly]
+m.poly <- m.poly[,colSums(m.poly) > 20]
+m.poly<-m.poly[rowSums(m.poly) > 0,]
+```
+
+Trouvons le terme qui revient le plus souvent et la moyenne de fois il revient par document.
+
+```{r echo = F}
+
+
+sprintf("Le terme qui revient le plus souvent est '%s' et il revient %d fois.", 
+        rownames(m.poly)[which.max(rowSums(m.poly))],
+        max(rowSums(m.poly)))
+sprintf("Ce terme revient en moyenne %f fois",max(rowSums(m.poly))/dim(m.poly)[2])
+
+sprintf('En utilisant les cours de poly seulement on utilise %d pct des mots et %d pct des documents',
+        round(100*dim(m.poly)[1]/dim(m.text)[1]),round(100*dim(m.poly)[2]/dim(m.text)[2]))
+
+```
+
+
+# Cadre Théorique
+
+Pour le design de notre solution, nous nous sommes initialement basé sur l'article "Science Concierge: A Fast Content-Based Recommendation System for Scientific Publications" par Achakulvisut et autres.[^1] Dans l'article, on mentionne plusieurs transformation de matrice qui seront ensuite utilisé dans une méthode "Latent Semantic Analysis" (LSA). Ces transformations et la méthode LSA seront traité lors des trois sections suivantes.
+
+[^1]: Achakulvisut T, Acuna DE, Ruangrong T, Kording K (2016) Science Concierge: A Fast Content-Based Recommendation System for Scientific Publications. PLoS ONE 11(7): e0158423. doi:10.1371/journal.pone.0158423
+
+## TF-IDF
+La transformation TF-IDF de la matrice termes-cours permet de mettre l'emphase sur des termes plus rares par rapport aux termes qui se retrouvent dans pratiquement tous les documents.
+
+L'équation suivante montre comment nous avons calculé le TF-IDF:
+
+$$TF-IDF_{i,j} = (1 + logf_{i,j}) * log\frac{n}{f_i+1}$$
+
+où
+
+TF-IDF~i,j~ = TF-IDF du terme i pour le document j  
+f~i,j~ = Fréquence du terme i dans le document j  
+f~i~ = Nombre de document contenant le terme i  
+n = Nombre total de documents  
+  
+
+On utilise la transformation du TF avec le log en ce basant sur l'article scientifique mentionné plus haut.
+
+
+## Log-Entropy
+La transformation suivante que nous avons utilisé est la transformation log-entropy.
+On doit d'abord calculer l'entropie global du terme i (g~i~) à l'aide de la formule suivante:
+$$ g_i = 1 + \sum_j \frac{p_{i,j} * log_2(p_{i,j})}{log_2(n)}$$
+où 
+$$ p_{i,j} = \frac{f_{i,j}}{\sum_j f_{i,j}}$$
+  
+On calcule ensuite l'entropie du terme i pour le document j (l~i,j~):
+
+$$l_{i,j} = log_2(1 + log f_{i,j}) * g_i $$
+  
+Sachant que:  
+f~i,j~ = Fréquence du terme i dans le document j  
+n = Nombre total de documents  
+g~i~ = Entropie global pour le terme i  
+l~i,j~ = Entropie du terme i pour le document j  
+
+
+# Modèles
+
+## Logique derrière les modèles
+
+## Présentation des modèles
+
+###1) Comparaison des termes
+
+###2) TF-IDF
+
+###3) Log-Entropy
+
+###4) LSA 
+
+###5) TF-IDF -> LSA
+
+###6) Log-Entropy -> LSA
+
+
+# Conclusion
+
+## Étapes Futures
+
+À la suite de ce projet, nous aurions plusieurs étapes à compléter pour assurer quel des modèles est réellement le plus efficace, mais aussi pour rendre les recommandations encore meilleur. Voici la liste des étapes potentielles:  
+
+* Effectuer un sondate plus étendu. Pour l'instant, le sondage a été effectuer seulement Mikael et Claude. Avec plus de temps, nous devrions contacter plus d'étudiant, de background différent pour juger de la qualité des recommandations. Nous aurions aussi un travail plus systématique nécessaire pour retirer les biais de ce sondate.
+
+* Obtenir des données supplémentaires. Nous avions en tête d'obtenir des données pour ajouter un aspect collaboratif au système. Les données pourraient être la liste des cours suivis pour différents étudiants. De plus, avec ce genre de données, nous pourrions effectuer des méthodes de validation du style "Leave one out"
+
+* Ajouter des critères de hiérarchie de cours. Ce que nous voulons dire par là est que pour l'instant, notre système n'a aucune restriction pour les recommandations, le input pourrait être un cours de maitrise et la recommandation, un cours de 1^ere année de BAC. En créant une tel hiérarchie, on pourrait potentiellement augmenter la qualité des recommandations.
+
+* Ajouter les cours d'autres universités. Pour le moment, nous couvrons seulement Polytechnique pour réduire les temps de calcul. Cependant, en utilisant tous les cours qui sont ;a notre diposition (UQAM, U de M et HEC), nous pourions améliorer la diversité des recommandations. Aussi, nous pourrions ajouter tous les universités montréalaises pour avoir un système complet pour la grande région de Montréal.
+
+* Penser à des méthodes alternatives de validation des recommandations. Pour le projet, un sondage a été effectué, cependant, un étape future serait de repenser à si cette méthode est réellement la plus efficace.
+
+# Références
+  
+1. Achakulvisut T, Acuna DE, Ruangrong T, Kording K (2016) Science Concierge: A Fast Content-Based Recommendation System for Scientific Publications. PLoS ONE 11(7): e0158423. doi:10.1371/journal.pone.0158423
+
+2. Landauer, T. K., Foltz, P. W., & Laham, D. (1998). Introduction to Latent Semantic Analysis. Discourse Processes, 25, 259-284
+
+3. Bergamaschi, S., Po, L., & Sorrentino, S. (2014). Comparing Topic Models for a Movie Recommendation System. WEBIST.
