@@ -47,3 +47,8 @@ dim(m.poly)[2]/dim(m.text)[2]
 #Moyenne de mots dans les description
 mean(colSums(m.poly))
 sd(colSums(m.poly))
+
+
+#Le nombre de description différentes pour chaque 
+#terme
+rowSums(m.poly>0)

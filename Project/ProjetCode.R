@@ -8,7 +8,7 @@ if(!require("pacman")) install.packages("pacman")
 pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext)
 rm(list=ls())
 order.partial=function(vec)
-  {
+{
   idx<-which(vec<=sort(vec,partial=11)[11])
   idx[order(vec[idx])][2:11]
 }
@@ -22,6 +22,7 @@ max.nindex <- function(m, n=10) {
   i <- order(m, decreasing=TRUE)
   return(i[1:n])
 }
+
 max.nindex.corr <- function(m, n=6) {
   i <- order(m, decreasing=TRUE)
   return(i[2:n])
@@ -36,6 +37,7 @@ setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
 #setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
+resultat=read.csv("Resultat/resultat.csv")
 colnames(text.data)<-c('courses.id','terms.id','n')
 m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
 
@@ -60,8 +62,8 @@ m.poly <- m.poly[,colSums(m.poly) > 20]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 #À décommenter si on veut faire le focus sur le cours 
-#IND4707
-m.poly=cbind(m.poly[,636:737],m.poly[,1:635],m.poly[,738:1159])
+#MEC1210
+m.poly=cbind(m.poly[,739:851],m.poly[,1:738],m.poly[,852:1159])
 
 # Similarite terme-terme --------------------------------------------------
 
@@ -81,17 +83,24 @@ term.count$term <- terms.data[term.count$terms.id,]
 correlation <- cor(as.matrix(m.poly),method="spearman")
 #correlation=cosinus.vm(as.matrix(m.poly),as.matrix(m.poly))
 neighbors <-t(apply(correlation,1,max.nindex.corr))
-correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
-correlation.termes[is.na(correlation.termes)]=-1
-neighbors.termes <-t(apply(correlation.termes,1,max.nindex.corr))
+#correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
+#correlation.termes[is.na(correlation.termes)]=-1
+#neighbors.termes <-t(apply(correlation.termes,1,max.nindex.corr))
 
 # Matrix Transformation ---------------------------------------------------
 n.courses <- ncol(m.poly)
 log.m <- log(m.poly)
 log.m[is.infinite(log.m)] <- 0
 tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
-#tf.idf[m.poly==0]=0
+tf.idf[m.poly==0]=0
 #tf.idf <- m.poly * log(n.courses/(rowSums(m.poly > 0)+1))
+
+
+#Correction Focus MEC1210
+tf.idf.focus=tf.idf[,739:851]
+max.focus=max.nindex(rowSums(tf.idf.focus),50)
+m.poly=rbind(m.poly[max.focus,],m.poly[c(1:dim(m.poly)[1])[-max.focus],])
+
 pij <- m.poly / rowSums(m.poly)
 log2.pij <- log2(pij)
 log2.pij[is.infinite(log2.pij)] <- 0
@@ -109,6 +118,9 @@ neighbors.tfidf <- t(apply(correlation.tfidf,1,max.nindex.corr))
 correlation.ent <- cor(as.matrix(log.entropy),method="spearman")
 neighbors.ent<-t(apply(correlation.ent,1,max.nindex.corr))
 
+
+#Correction Focus 
+tf.idf.focus=tf.idf[,739:851]
 # LSA ---------------------------------------------------------------------
 
 lsa.startTime <- Sys.time()
@@ -123,9 +135,9 @@ lsa.elapsedTime
 
 correlation.lsa <- cor(as.matrix(X.lsa),method="spearman")
 neighbors.lsa <-t(apply(correlation.lsa,1,max.nindex.corr))
-correlation.termes.lsa=cor(t(as.matrix(X.lsa)),method="spearman")
-correlation.termes.lsa[is.na(correlation.termes.lsa)]=-1
-neighbors.termes.lsa <-t(apply(correlation.termes.lsa,1,max.nindex.corr))
+#correlation.termes.lsa=cor(t(as.matrix(X.lsa)),method="spearman")
+#correlation.termes.lsa[is.na(correlation.termes.lsa)]=-1
+#neighbors.termes.lsa <-t(apply(correlation.termes.lsa,1,max.nindex.corr))
 
 #X.lsa.tfidf <- lsaSpace.tfidf$tk %*% diag(lsaSpace.tfidf$sk) %*% t(lsaSpace.tfidf$dk)
 correlation.lsa.tfidf <- cor(as.matrix(X.lsa.tfidf),method="spearman")
@@ -137,7 +149,7 @@ correlation.lsa.ent <- cor(as.matrix(X.lsa.ent),method="spearman")
 neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
 
 # Evaluation des methodes -------------------------------------------------
- 
+
 #Choisissons 10 cours a evaluer
 liste.cours <- c("MTH1006","MEC1210","MEC2115","AR320","INF2010","IND4704")
 index.cours=c(907,739,747,36,632,548)
@@ -178,7 +190,7 @@ tableau.least=data.frame(mots=name.least100)
 #Infos nices
 #On sort les tf-idf maximaux
 tf.idf.reduit=tf.idf[,index.cours]
-tf.idf.max=t(apply(t(tf.idf.reduit),1,max.nindex))
+tf.idf.max=t(apply(t(tf.idf.reduit),1,max.nindex.tfidf))
 mat.tf.idf=matrix(NA,nrow=nrow(tf.idf.max),ncol=ncol(tf.idf.max))
 
 
@@ -188,22 +200,22 @@ for (i in 1:dim(tf.idf.max)[1]){
 }
 rownames(mat.tf.idf)=rownames(tf.idf.max)
 
-
-mat.termes=matrix(NA,nrow=nrow(neighbors.termes),ncol=ncol(neighbors.termes))
-mat.termes.lsa=matrix(NA,nrow=nrow(neighbors.termes.lsa),ncol=ncol(neighbors.termes.lsa))
-for (i in 1:dim(neighbors.termes)[1]){
-  mat.termes[i,]=rownames(m.poly)[neighbors.termes[i,]]
-  mat.termes.lsa[i,]=rownames(m.poly)[neighbors.termes.lsa[i,]]
-}
-rownames(mat.termes)=rownames(neighbors.termes)
-rownames(mat.termes.lsa)=rownames(neighbors.termes.lsa)
+#Partie sur la corrélation de termes (à commenter car long à compute)
+#mat.termes=matrix(NA,nrow=nrow(neighbors.termes),ncol=ncol(neighbors.termes))
+#mat.termes.lsa=matrix(NA,nrow=nrow(neighbors.termes.lsa),ncol=ncol(neighbors.termes.lsa))
+#for (i in 1:dim(neighbors.termes)[1]){
+# mat.termes[i,]=rownames(m.poly)[neighbors.termes[i,]]
+#mat.termes.lsa[i,]=rownames(m.poly)[neighbors.termes.lsa[i,]]
+#}
+#rownames(mat.termes)=rownames(neighbors.termes)
+#rownames(mat.termes.lsa)=rownames(neighbors.termes.lsa)
 
 #On prend 2 mots qui décrit chaque cours pris dans notre évaluation
 mots=c(1393,2328,2033,237,
        2160,2684,1210,4570,4032,4218,610,
        3902,4510)
-mat.termes.reduit=mat.termes[mots,]
-mat.termes.lsa.reduit=mat.termes.lsa[mots,]
+#mat.termes.reduit=mat.termes[mots,]
+#mat.termes.lsa.reduit=mat.termes.lsa[mots,]
 #Stats de base 
 
 
@@ -226,4 +238,21 @@ sd(colSums(m.poly))
 
 
 
+#Graphique des résultats 
 
+method=c("terme.terme","tf.idf","log.entropy","lsa","lsa.tfidf","lsa.ent")
+
+vect=data.frame(method.code=rep(0,dim(resultat)[1]))
+resultat.2=cbind(resultat,vect)
+for (i in c(1:length(method))){
+  resultat.2$method.code[which(resultat.2$Methode==
+                               method[i])]=i
+}
+count=table(resultat.2$method.code,resultat.2$Note)
+color=c("#DCF0F8","#368ECA","#146594","#FBDEE1","#DE4243","#991915")
+barplot(count, main="Performance des différentes méthodes",
+        xlab="Note",ylab="Count",
+        col=color,
+        legend =method,args.legend = list(x = "topleft"), beside=TRUE)
+mtext(side=1,"Note",line=2.5)
+mtext(side=2,"Count",line=2.5)
