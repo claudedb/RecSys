@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 if(!require("pacman")) install.packages("pacman")
-pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext)
+pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext, knitr)
 rm(list=ls())
 order.partial=function(vec)
   {
@@ -87,24 +87,42 @@ rownames(m.text) <- as.vector(terms.data[,1])
 # Pour l'instant nous n'avons pas de facon de tous les analyses
 id.poly <- which(courses.data$university== "Poly")
 m.poly <- m.text[,id.poly]
-m.poly <- m.poly[,colSums(m.poly) > 20]
+#m.poly <- m.poly[,colSums(m.poly) > 20]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
 ```
 
-Trouvons le terme qui revient le plus souvent et la moyenne de fois il revient par document.
+Trouvons le terme qui revient le plus souvent et la moyenne de fois il revient par document. C'est le terme  **"`r rownames(m.poly)[which.max(rowSums(m.poly))]`"** qui revient le plus souvent dans les documents. Il revient **`r max(rowSums(m.poly))`** fois et en moyenne **`r max(rowSums(m.poly))/dim(m.poly)[2]`** par document. En réduisant la matrice terme document originale avec seulement les cours de polytechnique, on conserve **`r round(100*dim(m.poly)[1]/dim(m.text)[1])`%** des termes et **`r round(100*dim(m.poly)[2]/dim(m.text)[2])`%** des documents. 
 
-```{r echo = F}
+On analyse ensuite la matrice terme document des cours de poly et on trouve qu'en moyenne les cours ont une descriptions de **`r mean(colSums(m.poly))` mots** et un écart type de **`r sd(colSums(m.poly))` mots**. Sachant ceci, nous avons donc décidé de conserver seulement les cours qui ont plus de (Moyenne - 2 écart type) mot, donc tous les cours de plus de 20 mots environ. 
 
+```{r echo = F }
+m.poly <- m.poly[,colSums(m.poly) > 20]
+m.poly<-m.poly[rowSums(m.poly) > 0,]
+courses.data.poly <-courses.data.poly[courses.data.poly$code %in% colnames(m.poly),]
+word.per.doc <- colSums(m.poly)
+word.occurence <- rowSums(m.poly)
+max.words <-max.nindex(word.occurence,20)
+max.words.table <- data.frame(n = word.occurence[max.words])
 
-sprintf("Le terme qui revient le plus souvent est '%s' et il revient %d fois.", 
-        rownames(m.poly)[which.max(rowSums(m.poly))],
-        max(rowSums(m.poly)))
-sprintf("Ce terme revient en moyenne %f fois",max(rowSums(m.poly))/dim(m.poly)[2])
-
-sprintf('En utilisant les cours de poly seulement on utilise %d pct des mots et %d pct des documents',
-        round(100*dim(m.poly)[1]/dim(m.text)[1]),round(100*dim(m.poly)[2]/dim(m.text)[2]))
 
 ```
+Ceci retire seulement **`r length(id.poly) - ncol(m.poly)` cours** de notre matrice. Nous aurons donc, au total, **`r ncol(m.poly)`** cours avec en moyenne **`r mean(colSums(m.poly))` mots**.  
+  
+Regardons deux graphiques. Le premier un histogramme du nombre de mots par documents le second, le nombre d'occurence par mot.
+
+```{r echo = F}
+ggplot(data.frame(word.per.doc), aes(word.per.doc))+ geom_histogram(binwidth = 5) +
+  ggtitle('Graph 1: Nombre de mots par documents') + xlab('Nombre de mots') +
+  ylab('Nombre de documents')
+
+ggplot(data.frame(word.occurence), aes(word.occurence))+ geom_histogram(binwidth = 5) + 
+  ggtitle("Graph 2: Nombre d'occurence par mot") + xlab("Nombre d'occurence") + xlim(0,100) +
+  ylab("Nombre de mot")
+```
+  
+Pour mieux voir les occurences par mot, nous avons retiré tous les mots qui avaient plus de 100 occurences (**`r sum(word.occurence >100)` mots**).  
+Voici la liste des mots qui reviennent le plus fréquemment et le nombre de fois qu'ils apparaissent;  
+`r kable(max.words.table, caption = " Les mots les plus populaire")`  
 
 
 # Cadre Théorique
@@ -153,6 +171,10 @@ l~i,j~ = Entropie du terme i pour le document j
 
 ## Logique derrière les modèles
 
+La logique des modèles a été basé en partie sur l'article mentionné dans la partie théorie [^1]. Nous sommes partie de la matrice terme-document pour créer des recommandations de base, ensuite nous avons appliqué des transformations (TF-IDF et Log-Entropy) à cette matrice pour générer de nouvelles recommandations. Par la suite, nous avons utilisé ces trois matrices comme entrée pour mettre dans une fonction LSA pour générer 3 nouvelles listes de recommandations.  
+
+Ces recommandations prennent comme entrée un cours qu'un étudiant aurait apprécié, ensuite, on effectue un calcul de corrélation de Spearman pour trouver les n cours les plus similaires dans la matrice terme-document ou une des matrice modifiée. Pour faciliter le sondage nous avons décidé de générer seulement 5 recommandations par méthode (voir section [Résultats](#anchor) pour plus d'info sur le sondage).
+
 ## Présentation des modèles
 
 ###1) Comparaison des termes
@@ -167,6 +189,7 @@ l~i,j~ = Entropie du terme i pour le document j
 
 ###6) Log-Entropy -> LSA
 
+# Résultats
 
 # Conclusion
 
