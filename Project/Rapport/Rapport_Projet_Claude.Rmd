@@ -4,6 +4,10 @@ author: "Claude Demers-Belanger (1534217) & Mikael Perreault (1741869)"
 date: "November 30, 2018"
 output: html_document
 ---
+<style>
+body {
+text-align: justify}
+</style>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -67,8 +71,8 @@ Dans la section suivante, nous ferons un exploration de la matrice pour tenter d
 # Analyse Exploratoire des Données
 
 ```{r text.data m.text courses.data courses.data.poly terms.data id.poly m.poly, echo=F}
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 # Data Load
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
@@ -165,6 +169,32 @@ f~i,j~ = Fréquence du terme i dans le document j
 n = Nombre total de documents  
 g~i~ = Entropie global pour le terme i  
 l~i,j~ = Entropie du terme i pour le document j  
+
+## LSA
+###1) Pourquoi utiliser LSA? 
+Puisque le but de notre projet est de présenter une méthode qui pousse plus loin la compréhension des descriptions de document qu'une méthode classique termes-termes, nous avons opté pour un traitement LSA (Latent Semantic Analysis). Les raisons de l'utilisation de cette technique mathématique puissante sont nombreuses et en voici quelques unes :
+
+* En mettant l'emphase sur les dimensions latentes de notre matrice termes-documents, LSA nous permet de dégager le contexte des mots. Il s'agit d'une technique bidirectionnelle en ce sens qu'elle permet de dégager les contextes les plus vraisemblables pour un mot donné ainsi que les mots les plus vraisemblables pour un contexte donné. 
+
+* Cette technique nous permet de réduire l'effet du problème des mots à double sens. Par exemple, si on se base sur la co-occurences des termes, le mot "contrainte" peut autant produire des recommandations de cours de matériaux (contrainte mécanique) que des cours d'informatique (programmation par contraintes). La compréhension du contexte nous permet d'amoindrir ce problème. 
+
+* Cette méthode fonctionne par elle-même: on a besoin d'aucune métadonnée, aucun dictionnaire ni aucun graphe sémantique ni syntaxique. 
+
+* Finalement, on émet l'hypothèse que les recommandations LSA seront caractérisées par une sérendipité et une robustesse accrue en raison de l'abstraction des concepts découlant de la nature même de la méthode.
+
+###2) Les étapes de LSA
+En somme, LSA est une combinaison de méthodes que nous avons déjà vues dans le cours. Voici les principales étapes: 
+
+1) Générer la matrice termes-documents et l'homogénéiser (ex: word stemming).
+
+2) Pondération des termes selon TF-IDF comme expliqué précédemment.
+
+3) Décomposition SVD (Singular Value Decomposition: On décompose la matrice termes-documents en trois matrices, soit W, S et P. W est la représentation vectorielle des valeurs orthogonales et factorisées des lignes de la matrice originale alors que P est l'analogue pour les colonnes. S est une matrice diagonale contenant des valeurs d'échelle qui font en sorte que, lorsque ces trois matrices sont multipliées ensemble, le produit est égal à la matrice originale. Plus précisément : 
+$$ X=WSP' $$
+4) Réduction de dimension et recommandations : Afin de faire ressortir les facteurs latents, on doit procéder à une réduction de dimensions. De cette manière, lorsque les matrices réduites seront multipliées ensemble, le produit sera égal à une approximation de la matrice originale au sens des moindres carrés. Avec les matrices réduites $\hat{W}$, $\hat{S}$, $\hat{P'}$ , on a donc:
+$$\hat{X}=\hat{W}\hat{S}\hat{P'}$$
+Avec la matrice $\hat{X}$, on peut maintenant procéder aux recommandations en générant des corrélations par rapport aux colonnes de cette matrice (pour dégager les cours similaires)
+
 
 
 # Modèles
