@@ -6,10 +6,14 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = F)
+#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext, knitr)
 rm(list=ls())
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
 order.partial=function(vec)
   {
   idx<-which(vec<=sort(vec,partial=11)[11])
@@ -34,6 +38,199 @@ min.nindex <- function(m, n=5) {
   i <- order(m, decreasing=FALSE)
   return(i[1:n])
 }
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
+colnames(text.data)<-c('courses.id','terms.id','n')
+m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
+
+courses.data<-read.table('data/out.docs',sep="/")
+colnames(courses.data)<-c('university','code')
+courses.data.poly <-courses.data[courses.data$university=='Poly',]
+
+terms.data<-read.table('data/out.terms')
+
+colnames(m.text) <- as.vector(courses.data[,2])
+rownames(m.text) <- as.vector(terms.data[,1])
+
+# Nous garderons seulement les cours a la polyy
+# Pour l'instant nous n'avons pas de facon de tous les analyses
+id.poly <- which(courses.data$university== "Poly")
+m.poly <- m.text[,id.poly]
+#m.poly <- m.poly[,colSums(m.poly) > 20]
+m.poly<-m.poly[rowSums(m.poly) > 0,]
+m.poly <- m.poly[,colSums(m.poly) > 20]
+m.poly<-m.poly[rowSums(m.poly) > 0,]
+courses.data.poly <-courses.data.poly[courses.data.poly$code %in% colnames(m.poly),]
+word.per.doc <- colSums(m.poly)
+word.occurence <- rowSums(m.poly)
+max.words <-max.nindex(word.occurence,20)
+max.words.table <- data.frame(n = word.occurence[max.words])
+#Reste du code pour générer les recommandations
+
+#À décommenter si on veut faire le focus sur le cours 
+#MEC1210
+#m.poly=cbind(m.poly[,739:851],m.poly[,1:738],m.poly[,852:1159])
+
+# Similarite terme-terme --------------------------------------------------
+
+#On calcul la similarite entre les cours avec les termes directement
+
+#Compte des termes pour poly
+term.count <- text.data[courses.id %in% id.poly,.(total=sum(n),count=.N),by = terms.id ]
+term.count$term <- terms.data[term.count$terms.id,]
+
+# Similarités avec la correlation 
+correlation <- cor(as.matrix(m.poly),method="spearman")
+
+neighbors <-t(apply(correlation,1,max.nindex.corr))
+correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
+correlation.termes[is.na(correlation.termes)]=-1
+neighbors.termes <-t(apply(correlation.termes,1,max.nindex.corr))
+
+# Matrix Transformation ---------------------------------------------------
+n.courses <- ncol(m.poly)
+log.m <- log(m.poly)
+log.m[is.infinite(log.m)] <- 0
+tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
+#tf.idf[m.poly==0]=0
+tf.idf.modif <- m.poly * log(n.courses/(rowSums(m.poly > 0)+1))
+
+
+#Correction Focus MEC1210
+#tf.idf.focus=tf.idf[,739:851]
+#max.focus=max.nindex(rowSums(tf.idf.focus),50)
+#m.poly=rbind(m.poly[max.focus,],m.poly[c(1:dim(m.poly)[1])[-max.focus],])
+
+pij <- m.poly / rowSums(m.poly)
+log2.pij <- log2(pij)
+log2.pij[is.infinite(log2.pij)] <- 0
+global.entropy <- 1 + rowSums((pij * log2.pij * pij)/log2(n.courses))
+log.entropy <- log2(1 + m.poly) * global.entropy
+
+
+# TF-IDF ------------------------------------------------------------------
+
+correlation.tfidf <-cor(as.matrix(tf.idf),method="spearman")
+neighbors.tfidf <- t(apply(correlation.tfidf,1,max.nindex.corr))
+
+# log entropy -------------------------------------------------------------
+
+correlation.ent <- cor(as.matrix(log.entropy),method="spearman")
+neighbors.ent<-t(apply(correlation.ent,1,max.nindex.corr))
+
+
+#Correction Focus 
+tf.idf.focus=tf.idf[,739:851]
+# LSA ---------------------------------------------------------------------
+
+lsa.startTime <- Sys.time()
+lsaSpace.tfidf <- lsa(tf.idf,dims=50)
+X.lsa.tfidf <- as.textmatrix(lsaSpace.tfidf)
+lsaSpace.entropy <- lsa(log.entropy, dims=50)
+X.lsa.ent <- as.textmatrix(lsaSpace.entropy)
+X.lsa <- as.textmatrix(lsa(m.poly,dims=50))
+lsa.endTime <- Sys.time()
+lsa.elapsedTime <- lsa.endTime-lsa.startTime
+lsa.elapsedTime
+
+correlation.lsa <- cor(as.matrix(X.lsa),method="spearman")
+neighbors.lsa <-t(apply(correlation.lsa,1,max.nindex.corr))
+correlation.termes.lsa=cor(t(as.matrix(X.lsa)),method="spearman")
+correlation.termes.lsa[is.na(correlation.termes.lsa)]=-1
+neighbors.termes.lsa <-t(apply(correlation.termes.lsa,1,max.nindex.corr))
+
+correlation.lsa.tfidf <- cor(as.matrix(X.lsa.tfidf),method="spearman")
+neighbors.lsa.tfidf<-t(apply(correlation.lsa.tfidf,1,max.nindex.corr))
+
+
+correlation.lsa.ent <- cor(as.matrix(X.lsa.ent),method="spearman")
+neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
+
+# Evaluation des methodes -------------------------------------------------
+
+#Choisissons 10 cours a evaluer
+liste.cours <- c("MEC1210")
+index.cours=c(907,739,747,36,632,548)
+for (cours in liste.cours)
+{
+  #cours1 <- "ELE1403"
+  id.cours1 <- which(colnames(m.poly)==cours)
+  
+  comparaison <- cbind(colnames(m.poly)[neighbors[id.cours1,]],
+                       colnames(m.poly)[neighbors.tfidf[id.cours1,]],
+                       colnames(m.poly)[neighbors.ent[id.cours1,]],
+                       colnames(m.poly)[neighbors.lsa[id.cours1,]],
+                       colnames(m.poly)[neighbors.lsa.tfidf[id.cours1,]],
+                       colnames(m.poly)[neighbors.lsa.ent[id.cours1,]])
+  
+  colnames(comparaison) <-c('terme.terme','tf.idf','log.entropy','lsa','lsa.tfidf','lsa.entropy')
+  
+  #write.csv(comparaison, paste("CSVs/", cours,'.csv',sep = ''))
+  
+}
+
+
+
+#Vérification des 100 termes extrêmes pour TF-IDF
+tf.idf.tot=rowSums(tf.idf)
+mots.top100=tf.idf.tot[max.nindex(tf.idf.tot,100)]
+mots.least100=tf.idf.tot[min.nindex(tf.idf.tot,100)]
+name.top100=names(mots.top100)
+name.least100=names(mots.least100)
+tableau.top=data.frame(mots=name.top100)
+tableau.least=data.frame(mots=name.least100)
+
+
+#Infos autres
+#On sort les tf-idf maximaux
+tf.idf.reduit=tf.idf[,index.cours]
+tf.idf.max=t(apply(t(tf.idf.reduit),1,max.nindex))
+mat.tf.idf=matrix(NA,nrow=nrow(tf.idf.max),ncol=ncol(tf.idf.max))
+
+tf.idf.reduit.modif=tf.idf.modif[,index.cours]
+tf.idf.max.modif=t(apply(t(tf.idf.reduit.modif),1,max.nindex))
+mat.tf.idf.modif=matrix(NA,nrow=nrow(tf.idf.max.modif),ncol=ncol(tf.idf.max.modif))
+
+
+for (i in 1:dim(tf.idf.max.modif)[1]){
+  mat.tf.idf.modif[i,]=rownames(m.poly)[tf.idf.max.modif[i,]]
+}
+rownames(mat.tf.idf.modif)=rownames(tf.idf.max.modif)
+
+for (i in 1:dim(tf.idf.max)[1]){
+  mat.tf.idf[i,]=rownames(m.poly)[tf.idf.max[i,]]
+}
+rownames(mat.tf.idf)=rownames(tf.idf.max)
+
+#Partie sur la corrélation de termes (à commenter car long à compute)
+mat.termes=matrix(NA,nrow=nrow(neighbors.termes),ncol=ncol(neighbors.termes))
+mat.termes.lsa=matrix(NA,nrow=nrow(neighbors.termes.lsa),ncol=ncol(neighbors.termes.lsa))
+for (i in 1:dim(neighbors.termes)[1]){
+ mat.termes[i,]=rownames(m.poly)[neighbors.termes[i,]]
+mat.termes.lsa[i,]=rownames(m.poly)[neighbors.termes.lsa[i,]]
+}
+rownames(mat.termes)=rownames(neighbors.termes)
+rownames(mat.termes.lsa)=rownames(neighbors.termes.lsa)
+
+#On prend 2 mots qui décrit chaque cours pris dans notre évaluation
+mots=c(1393,2328,2033,237,
+       2160,2684,1210,4570,4032,4218,610,
+       3902,4510)
+mat.termes.reduit=mat.termes[mots,]
+mat.termes.lsa.reduit=mat.termes.lsa[mots,]
+
+#Graphique des résultats 
+
+method=c("terme.terme","tf.idf","log.entropy","lsa","lsa.tfidf","lsa.ent")
+resultat=read.csv("Resultat/resultat.csv")
+vect=data.frame(method.code=rep(0,dim(resultat)[1]))
+resultat.2=cbind(resultat,vect)
+for (i in c(1:length(method))){
+  resultat.2$method.code[which(resultat.2$Methode==
+                               method[i])]=i
+}
+count=table(resultat.2$method.code,resultat.2$Note)
+color=c("#DCF0F8","#368ECA","#146594","#FBDEE1","#DE4243","#991915")
 ```
 
 # Introduction
@@ -67,9 +264,9 @@ Dans la section suivante, nous ferons un exploration de la matrice pour tenter d
 # Analyse Exploratoire des Données
 
 ```{r text.data m.text courses.data courses.data.poly terms.data id.poly m.poly, echo=F}
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+
 # Data Load
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
 m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
@@ -89,6 +286,7 @@ id.poly <- which(courses.data$university== "Poly")
 m.poly <- m.text[,id.poly]
 #m.poly <- m.poly[,colSums(m.poly) > 20]
 m.poly<-m.poly[rowSums(m.poly) > 0,]
+
 ```
 
 Trouvons le terme qui revient le plus souvent et la moyenne de fois il revient par document. C'est le terme  **"`r rownames(m.poly)[which.max(rowSums(m.poly))]`"** qui revient le plus souvent dans les documents. Il revient **`r max(rowSums(m.poly))`** fois et en moyenne **`r max(rowSums(m.poly))/dim(m.poly)[2]`** par document. En réduisant la matrice terme document originale avec seulement les cours de polytechnique, on conserve **`r round(100*dim(m.poly)[1]/dim(m.text)[1])`%** des termes et **`r round(100*dim(m.poly)[2]/dim(m.text)[2])`%** des documents. 
@@ -216,6 +414,105 @@ Ces recommandations prennent comme entrée un cours qu'un étudiant aurait appréci
 ###6) Log-Entropy -> LSA
 
 # Résultats
+Dans cette section, on traitera de la méthodologie et les principaux résultats seront présentés. 
+## Méthodologie 
+Notre expérience peut être segmentée en 5 étapes que voici : 
+
+1) Calcul des matrices: Pour nos 6 modèles les matrices de recommandation sont générées. En ce qui concerne les méthodes LSA, on doit fixer le nombre de dimensions de la réduction. Habituellement, si on avait à notre disponibilité un "ground truth", on aurait fixé comme hyperparamètre ce nombre de dimensions optimal et on l'aurait déterminé par validation croisée. Comme ce n'est pas le cas, on pose ce nombre de dimensions à 50 de façon arbitraire et on le fera varier dans les analyses post-traitement. 
+
+2) Une fois les matrices compilées, on calcule les corrélations de Spearman entre les cours et, pour un cours cible, on sort les 5 cours avec corrélations maximales pour les recommandations.
+
+3) Sélection de 6 cours tests de domaines différents: comme on dispose de 1200 cours, on rétréciera notre ensemble de test pour effectuer le sondage. Étant donné que ce sont des cours que nous avons suivis et aimés, nous serons en mesure de juger les recommandations adéquatement. Les cours choisis sont les suivants:
+* MEC2115: Méthodes expérimentales et mesures en mécanique
+
+* AR320: Aérodynamique II 
+
+* MEC1210: Thermodynamique
+
+* MTH1006: Algèbre Linéaire
+
+* INF2010: Structures de données et algorithmes
+
+* IND4704: Théorie de la décision
+
+Au total, il y a eu 5 recommandations pour 6 méthodes et pour 6 cours, donc 180 notes au total. Pour réduire le temps du sondage, Mikael a évalué les cours MEC1210, MTH1006 et MEC2115 alors que Claude a évalué INF2010, AR320 et IND4704. 
+
+4) Pour les recommandations de ces 6 cours, on effectue un sondage dans lequel on octroie des notes allant de 1 à 5 pour chaque recommandation. Faute de temps, les deux seuls répondants à ce sondage sont Mikael et Claude. Les qualités qui sont jugées dans ce sondage sont la pertinence et la nouveauté des recommandations. Plus précisément, voici la signification des notes sur laquelle l'équipe s'est entendue: 
+* 1: Aucun lien avec le cours cible 
+
+* 2: Même domaine, mais pas les mêmes concepts (ex: un cours de calcul est recommandée pour un cours d'algèbre linéaire )
+
+* 3: Mêmes concepts, différents domaines (ex: un cours de thermodynamique en génie chimique est recommandée pour un cours de thermodynamique en génie mécanique)
+
+* 4: Cours similaires en tous points, mais redondant. 
+
+* 5: Cours similaires en tous points et qu'on serait interessé à suivre pour étendre nos horizons découlant du cours cible.
+
+Par ailleurs, nous avons pensé à créer notre propre "ground truth", mais on s'est arrêté à deux problèmes principaux. D'une part, on aurait pu créer une métrique de précision basée sur le nombre de cours dans le même programme que l'algorithme réussit à prédire. Toutefois, comme notre but est de prédire des cours hors cursus, cette métrique ne serait pas un indicateur de succès. D'autre part, la seule méthode légitime pour se créer un "ground truth" aurait été de parcourir toutes les descriptions de cours et de sélectionner manuellement des descriptions qui seraient voulues selon nos critères subjectif. Or, comme il aurait fallu passer au travers de tout le corpus pour avoir une vision exhaustive des cours qui devraient optimalement être recommandées, nous nous sommes dit qu'un sondage accomplirait le même objectif, tout en réduisant le temps d'analyse (environ 1200 descriptions de cours). 
+
+5) Analyses post-traitement. Ces analyses sont des variations et des études plus poussées par rapport à la méthode de calcul initiale. On parle ici de variation du nombre de dimensions des méthodes LSA et une méthode de focus sur les dimensions cibles qui sera expliquée prochainement. 
+
+# Présentation des résultats
+D'abord, voici un exemple de recommandations en fonction des méthodes pour le cours de thermodynamique (l'ordre de haut en bas est l'ordre décroissant des corrélations) : 
+```{r, echo=F}
+comparaison
+```
+Pour ce cours, on remarque d'abord que les recommandations pour chacune des méthodes sont assez similaires. De plus, on observe aussi que, malgré le fait que ce soit un cours de génie mécanique, ce sont plutôt des cours de génie physique et génie chimique qui apparaissent comme recommandation principale. Ceci est logique, puisque la thermodynamique est une matière qui relève directement de ces domaines. 
+
+Montrons maintenant un graphique qui synthétise les résultats du sondage (ces derniers sont présentés intégralement en annexe) : 
+```{r echo=F}
+barplot(count, main="Performance des différentes méthodes",
+        col=color,
+        legend =method,args.legend = list(x = "topleft"), beside=TRUE)
+mtext(side=1,"Note",line=2.5)
+mtext(side=2,"Count",line=2.5)
+```
+
+Dans la figure ci-dessus, l'axe des abscisses représente les notes qui ont été octroyées aux cours. Sur l'axe des ordonnées, on trouve le nombre de fois que ces notes ont été données. Les bandes bleues ont été utilisées pour illustrer les méthodes non-LSA (corrélation faite directement sur la matrice termes-documents, moyennant parfois certains traitements) tandis que les bandes rouges sont utilisées pour les méthodes LSA (matrice termes-documents parfois traitée et donnée en entrée dans une fonction LSA).  A priori, on observe que les recommandations sont très bonnes et ce, pour la plupart des méthodes. 
+
+Les moyennes des cours sont compilées dans le tableau suivant: 
+```{r, echo=F}
+liste.cours=c("MEC1210","MTH1006","MEC2115","INF2010","AR320","IND4704")
+moyenne.cours=c(4.13,4.00,3.00,3.90,4.77,3.50)
+moyenne.methode.mik=c(4.13,2.53,4.13,4.53,2.93,4)
+moyenne.methode.claude=c(4.27,3.33,4.27,3.73,4.47,4.27)
+moyenne.gen=c(4.2,2.93,4.2,4.13,3.7,4.13)
+tableau.moy.cours=data.frame(Moy=moyenne.cours)
+rownames(tableau.moy.cours)=liste.cours
+tableau.moy.cours
+```
+On voit dans ce tableau que les deux notes les plus hautes sont les cours de thermodynamique (MEC1210) et Aérodynamique (AR320) alors que les deux notes les plus basses sont les cours d'instrumentation (MEC2115) et de prise de décision industrielle (IND4704). Une explication plausible est que ces méthodes performent bien pour des domaines techniques. Par exemple, en aérodynamique, les mêmes termes technique reviennent plus souvent (ex: profil d'aile, écoulement de Bernouilli, couche limite) et donc, les méthodes non-LSA performent mieux. En ce qui concerne les cours, avec les moins bonnes notes, on remarque qu'il s'agit de cours plutôt généraux, la théorie de la mesure ainsi que la précision étant commune à plusieurs domaines. 
+
+Ensuite, on présente un tableau synthétisant les moyennes des notes des méthodes pour chaque répondant: 
+```{r echo=F}
+tableau.moy.met=data.frame(Moy.Mikael=moyenne.methode.mik,Moy.Claude=moyenne.methode.claude,Moy.Totale=moyenne.gen)
+rownames(tableau.moy.met)=method
+tableau.moy.met
+```
+On observe deux points importants. D'une part, les méthodes log.entropy et terme-terme donnaient exactement les mêmes résultats. D'autre part, les méthodes impliquant le TF-IDF en pré-traitement donnent nettement les résultats les moins bons; nous essaierons d'investiguer pourquoi dans la section suivante. 
+# Analyse 
+Dans cette section, on procèdera à différentes analyses post-traitement sur les résultats obtenus à la section précédente. 
+
+## TF-IDF
+Afin d'investiguer la raison pour laquelle les méthodes impliquant le TF-IDF donnent les moins bons résultats, on sort les mots avec les TF-IDF maximaux (calculés avec la normalisation logarithmique de l'article [1]) pour chacun de nos cours tests:
+```{r echo=F}
+mat.tf.idf
+```
+Or, on voit que les termes "huileus", "prefix" et "fourni" se retrouvent dans les tops de tous les cours. Regardons maintenant les mots à TF-IDF maximaux dans tout le corpus. On sort les 100 mots ayant les TF-IDF maximaux et minimaux : 
+```{r echo=F}
+tableau.tf=data.frame(Bottom=tableau.least,Top=tableau.top)
+colnames(tableau.tf)=c("Bottom","Top")
+tableau.tf
+```
+Par exemple, on remarque que le terme "huileus" survient à la 16e position des plus grands TF-IDF dans le corpus. Aussi, on sait que la normalisation logarithmique fait en sorte que des termes n'ayant pas de valeur dans la matrice termes-documents (i.e. ne se trouve pas dans le document) peuvent avoir une valeur dans la matrice TF-IDF. Conséquemment, on comprend pourquoi des termes ayant de hauts TF-IDF globaux peuvent avoir du poids dans les recommandations par rapport à un cours ne possédant même pas ces termes dans sa description, ce qui vient assurément fausser les résultats pour les méthodes impliquant TF-IDF (TF-IDF et LSA-TF-IDF). Notons que la méthode LSA classique, par exemple, n'est pas affectée par ce problème, puisque c'est la fonction LSA qui fait son propre prétraitement TF-IDF. 
+
+Par ailleurs, pour remédier à ce problème, les auteurs de l'articles supprimaient les termes ayant un TF-IDF supérieur à une certaine borne et cette borne était déterminée par validation croisée. Cependant, étant donné que nous ne possédons pas de "ground truth", on ne peut pas  déterminer cette borne. Alors, pour simplifier le tout, nous allons regénérer les TF-IDF maximaux de deux façons différentes: 1)En posant nulle les valeurs des termes dans la matrice TF-IDF qui ne possènent pas de valeur dans la matrice termes-documents  2) En calculant un TF-IDF classique sans normalisation logarithmique. Pour les résultats qui suivent, ces deux méthodes donnent exactement la même sortie, on les traitera donc comme une seule. Voici les TF-IDF maximaux de nos cours avec la correction : 
+```{r echo=F}
+mat.tf.idf.modif
+```
+On voit maintenant qu'il n'y a plus de termes irréguliers. De plus, on conclut aussi que TF-IDF fait un bon travail pour identifier les termes significatifs pour chacun des cours. En regénérant d'autres recommandations avec cette correction, on conclut que TF-IDF donne exactement les mêmes résultats que termes-termes tandis que LSA-TF-IDF donnent exactement les mêmes résultats que LSA classique. 
+
+## Variations LSA 
 
 # Conclusion
 
