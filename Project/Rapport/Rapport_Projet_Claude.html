@@ -314,10 +314,8 @@ l<sub>i,j</sub> = Entropie du terme i pour le document j</p>
 <div id="comparaison-des-termes" class="section level3">
 <h3>1) Comparaison des termes</h3>
 <p>Pour le modèle de comparaison terme-terme, nous faisons simplement une comparaison des cours entre eux avec une corrélation de spearman. Ensuite, on détermine les 5 cours les plus similaires pour chacun des cours. Avec l’entrée d’un cours, on choisit donc la ligne correspondante à ce cours. Nous discuterons plus en détails des recommandations dans la section suivante. Cepdendat, voici l’exemple du code qui générera les recommandations pour le cours de thermodynamique en comparant terme à terme sans transformation de la matrice originale.</p>
-<pre class="r"><code>correlation.termes=cor(t(as.matrix(m.poly)),method=&quot;spearman&quot;)</code></pre>
-<pre><code>## Warning in cor(t(as.matrix(m.poly)), method = &quot;spearman&quot;): the standard
-## deviation is zero</code></pre>
-<pre class="r"><code>correlation.termes[is.na(correlation.termes)]=-1
+<pre class="r"><code>correlation.termes=cor(t(as.matrix(m.poly)),method=&quot;spearman&quot;)
+correlation.termes[is.na(correlation.termes)]=-1
 neighbors.termes &lt;-t(apply(correlation.termes,1,max.nindex.corr))
 id.cours1 &lt;- which(colnames(m.poly)==&quot;MEC1210&quot;) #Thermodynamique
 recommandations.terme &lt;- colnames(m.poly)[neighbors[id.cours1,]]
@@ -435,10 +433,8 @@ log.entropy[1:20,1:8]</code></pre>
 <h3>4) LSA</h3>
 <p>Pour les modèles LSA, nous changerons simplement les matrices d’entrée par les matrices avec les différentes transformations. Nous utiliseront le package LSA de R. On utilise la fonction LSA() qui décompose en facteurs latents et la fonction as.textmatrix() qui prend les facteurs latents en entrée et retourne une matrice qui sera utilisée pour faire les corrélations.</p>
 <p>Voici le code pour LSA avec la matrice d’entrée terme-document originale qui gènère une matrice post LSA:</p>
-<pre class="r"><code>X.lsa &lt;- as.textmatrix(lsa(m.poly,dims=50))</code></pre>
-<pre><code>## Warning in lsa(m.poly, dims = 50): [lsa] - there are singular values which
-## are zero.</code></pre>
-<pre class="r"><code>X.lsa[1:20,1:8]</code></pre>
+<pre class="r"><code>X.lsa &lt;- as.textmatrix(lsa(m.poly,dims=50))
+X.lsa[1:20,1:8]</code></pre>
 <pre><code>##                     AE3100        AE3205       AE3300        AE3400
 ## null          8.165613e-01  0.9287668724  0.986030457  0.8439828336
 ## huileus       7.343004e-04 -0.0103724012 -0.007725750  0.0224131656
@@ -485,10 +481,8 @@ log.entropy[1:20,1:8]</code></pre>
 <div id="tf-idf---lsa" class="section level3">
 <h3>5) TF-IDF -&gt; LSA</h3>
 <p>Voici le code pour générer la matrice TF-IDF LSA qui prend comme entrée la matrice TF-IDF:</p>
-<pre class="r"><code>lsaSpace.tfidf &lt;- lsa(tf.idf,dims=50)</code></pre>
-<pre><code>## Warning in lsa(tf.idf, dims = 50): [lsa] - there are singular values which
-## are zero.</code></pre>
-<pre class="r"><code>X.lsa.tfidf &lt;- as.textmatrix(lsaSpace.tfidf)
+<pre class="r"><code>lsaSpace.tfidf &lt;- lsa(tf.idf,dims=50)
+X.lsa.tfidf &lt;- as.textmatrix(lsaSpace.tfidf)
 X.lsa.tfidf[1:20,1:8]</code></pre>
 <pre><code>##                     AE3100        AE3205        AE3300        AE3400
 ## null         -0.0003352624 -0.0005555302 -0.0004846415 -0.0008293961
@@ -536,10 +530,8 @@ X.lsa.tfidf[1:20,1:8]</code></pre>
 <div id="log-entropy---lsa" class="section level3">
 <h3>6) Log-Entropy -&gt; LSA</h3>
 <p>Voici le code pour générer la matrice Log-Entropy LSA qui prend comme entrée la matrice Log Entropy:</p>
-<pre class="r"><code>lsaSpace.entropy &lt;- lsa(log.entropy, dims=50)</code></pre>
-<pre><code>## Warning in lsa(log.entropy, dims = 50): [lsa] - there are singular values
-## which are zero.</code></pre>
-<pre class="r"><code>X.lsa.ent &lt;- as.textmatrix(lsaSpace.entropy)
+<pre class="r"><code>lsaSpace.entropy &lt;- lsa(log.entropy, dims=50)
+X.lsa.ent &lt;- as.textmatrix(lsaSpace.entropy)
 X.lsa.ent[1:20,1:8]</code></pre>
 <pre><code>##                     AE3100       AE3205       AE3300        AE3400
 ## null          0.7441498096  0.874888321  0.827320179  1.0604524685

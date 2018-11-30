@@ -408,7 +408,7 @@ Ces recommandations prennent comme entrée un cours qu'un étudiant aurait appréci
 
 ###1) Comparaison des termes
 Pour le modèle de comparaison terme-terme, nous faisons simplement une comparaison des cours entre eux avec une corrélation de spearman. Ensuite, on détermine les 5 cours les plus similaires pour chacun des cours. Avec l'entrée d'un cours, on choisit donc la ligne correspondante à ce cours. Nous discuterons plus en détails des recommandations dans la section suivante. Cepdendat, voici l'exemple du code qui générera les recommandations pour le cours de thermodynamique en comparant terme à terme sans transformation de la matrice originale.  
-```{r  echo = T}
+```{r message=F, warning = F, echo = T}
 correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
 correlation.termes[is.na(correlation.termes)]=-1
 neighbors.termes <-t(apply(correlation.termes,1,max.nindex.corr))
@@ -419,7 +419,7 @@ recommandations.terme
 ###2) TF-IDF
 Pour le modèle TF-IDF, on utilise la même logique mais en utilisant une matrice modifiée TF-IDF pour faire les corrélations. Voici le code pour générer la matrice et une partie de cette matrice:  
   
-``` {r  echo = T}
+``` {r  message = F, warning = F, echo = T}
 log.m <- log(m.poly)
 log.m[is.infinite(log.m)] <- 0
 tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
@@ -430,7 +430,7 @@ tf.idf[1:20,1:8]
 ```
 ###3) Log-Entropy
 Log-Entropy reprend la même logique que le modèle précédent mais avec une transformation log-entropy. Voici le code pour générer la matrice et une partie de cette matrice:  
-```{r  echo = T}
+```{r message = F, warning = F, echo = T}
 pij <- m.poly / rowSums(m.poly)
 log2.pij <- log2(pij)
 log2.pij[is.infinite(log2.pij)] <- 0
@@ -443,7 +443,7 @@ log.entropy[1:20,1:8]
 Pour les modèles LSA, nous changerons simplement les matrices d'entrée par les matrices avec les différentes transformations. Nous utiliseront le package LSA de R. On utilise la fonction LSA() qui décompose en facteurs latents et la fonction as.textmatrix() qui prend les facteurs latents en entrée et retourne une matrice qui sera utilisée pour faire les corrélations.  
   
 Voici le code pour LSA avec la matrice d'entrée terme-document originale qui gènère une matrice post LSA:   
-``` {r  echo = T}
+``` {r  message = F, warning = F, echo = T}
 
 X.lsa <- as.textmatrix(lsa(m.poly,dims=50))
 X.lsa[1:20,1:8]
@@ -451,7 +451,7 @@ X.lsa[1:20,1:8]
 ###5) TF-IDF -> LSA
 
 Voici le code pour générer la matrice TF-IDF LSA qui prend comme entrée la matrice TF-IDF:  
-``` {r  echo = T}
+``` {r message = F, warning = F, echo = T}
 lsaSpace.tfidf <- lsa(tf.idf,dims=50)
 X.lsa.tfidf <- as.textmatrix(lsaSpace.tfidf)
 X.lsa.tfidf[1:20,1:8]
@@ -459,7 +459,7 @@ X.lsa.tfidf[1:20,1:8]
 ###6) Log-Entropy -> LSA
 
 Voici le code pour générer la matrice Log-Entropy LSA qui prend comme entrée la matrice Log Entropy: 
-``` {r  echo=T}
+``` {r  message = F, warning = F,echo=T}
 lsaSpace.entropy <- lsa(log.entropy, dims=50)
 X.lsa.ent <- as.textmatrix(lsaSpace.entropy)
 X.lsa.ent[1:20,1:8]
