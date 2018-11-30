@@ -8,12 +8,13 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F)
 #setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext, knitr)
 rm(list=ls())
-setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 order.partial=function(vec)
   {
   idx<-which(vec<=sort(vec,partial=11)[11])
@@ -38,7 +39,8 @@ min.nindex <- function(m, n=5) {
   i <- order(m, decreasing=FALSE)
   return(i[1:n])
 }
-setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
 m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
@@ -266,7 +268,8 @@ Dans la section suivante, nous ferons un exploration de la matrice pour tenter d
 ```{r text.data m.text courses.data courses.data.poly terms.data id.poly m.poly, echo=F}
 
 # Data Load
-setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
 m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
@@ -402,17 +405,84 @@ Ces recommandations prennent comme entrée un cours qu'un étudiant aurait appréci
 ## Présentation des modèles
 
 ###1) Comparaison des termes
-
+Pour le modèle de comparaison terme-terme, nous faisons simplement une comparaison des cours entre eux avec une corrélation de spearman. Ensuite, on détermine les 10 cours les plus similaires pour chacun des cours. Avec l'entrée d'un cours, on choisit donc la ligne correspondante à ce cours. On utilise le code suivant pour générer les recommendations:
+```{r  echo = T}
+correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
+correlation.termes[is.na(correlation.termes)]=-1
+neighbors.termes <-t(apply(correlation.termes,1,max.nindex.corr))
+id.cours1 <- which(colnames(m.poly)=="MEC1210") #Thermodynamique
+recommandations.terme <- colnames(m.poly)[neighbors[id.cours1,]]
+recommandations.terme
+```
 ###2) TF-IDF
+Pour le modèle TF-IDF, on utilise la même logique mais en utilisant une matrice modifiée TF-IDF pour faire les corrélations. Voici le code pour générer les recommandations:
+  
+``` {r  echo = T}
+log.m <- log(m.poly)
+log.m[is.infinite(log.m)] <- 0
+tf.idf <- (1 + log.m) * log (n.courses/(rowSums(m.poly > 0)+1))
+tf.idf[m.poly==0]=0
 
+correlation.tfidf <-cor(as.matrix(tf.idf),method="spearman")
+neighbors.tfidf <- t(apply(correlation.tfidf,1,max.nindex.corr))
+
+recommandations.tfidf <- colnames(m.poly)[neighbors.tfidf[id.cours1,]]
+recommandations.tfidf
+
+```
 ###3) Log-Entropy
+Log-Entropy reprend la même logique que le modèle précédent mais avec une transformation log-entropy. Voici le code:  
+```{r  echo = T}
+pij <- m.poly / rowSums(m.poly)
+log2.pij <- log2(pij)
+log2.pij[is.infinite(log2.pij)] <- 0
+global.entropy <- 1 + rowSums((pij * log2.pij * pij)/log2(n.courses))
+log.entropy <- log2(1 + m.poly) * global.entropy
 
+correlation.ent <- cor(as.matrix(log.entropy),method="spearman")
+neighbors.ent<-t(apply(correlation.ent,1,max.nindex.corr))
+
+recommandations.ent <- colnames(m.poly)[neighbors.ent[id.cours1,]]
+recommandations.ent
+```
 ###4) LSA 
+Pour les modèles LSA, nous changerons simplement les matrices d'entrée par les matrices avec les différentes transformations. Nous utiliseront le package LSA de R. On utilise la fonction LSA() qui décompose en facteur latent et la fonction as.textmatrix() qui prend les facteurs latents en entrée et retourne une matrice qui sera utilisé pour faire les corrélations.  
+  
+Voici le code pour LSA avec la matrice d'entrée terme-document originale:  
+``` {r  echo = T}
 
+X.lsa <- as.textmatrix(lsa(m.poly,dims=50))
+correlation.lsa <- cor(as.matrix(X.lsa),method="spearman")
+neighbors.lsa <-t(apply(correlation.lsa,1,max.nindex.corr))
+
+recommandations.lsa <- colnames(m.poly)[neighbors.lsa[id.cours1,]]
+recommandations.lsa
+```
 ###5) TF-IDF -> LSA
 
+Voici le code pour générer la matrice TF-IDF LSA qui prend comme entrée la matrice TF-IDF:  
+``` {r  echo = T}
+lsaSpace.tfidf <- lsa(tf.idf,dims=50)
+X.lsa.tfidf <- as.textmatrix(lsaSpace.tfidf)
+correlation.lsa.tfidf <- cor(as.matrix(X.lsa.tfidf),method="spearman")
+neighbors.lsa.tfidf<-t(apply(correlation.lsa.tfidf,1,max.nindex.corr))
+
+recommandations.lsa.tfidf <- colnames(m.poly)[neighbors.lsa.tfidf[id.cours1,]]
+recommandations.lsa.tfidf
+```
 ###6) Log-Entropy -> LSA
 
+Voici le code pour générer la matrice Log-Entropy LSA qui prend comme entrée la matrice Log Entropy: 
+``` {r  echo=T}
+lsaSpace.entropy <- lsa(log.entropy, dims=50)
+X.lsa.ent <- as.textmatrix(lsaSpace.entropy)
+correlation.lsa.ent <- cor(as.matrix(X.lsa.ent),method="spearman")
+neighbors.lsa.ent <- t(apply(correlation.lsa.ent,1,max.nindex.corr))
+
+recommandations.lsa.ent<- colnames(m.poly)[neighbors.lsa.ent[id.cours1,]]
+recommandations.lsa.ent
+
+```
 # Résultats
 Dans cette section, on traitera de la méthodologie et les principaux résultats seront présentés. 
 ## Méthodologie 

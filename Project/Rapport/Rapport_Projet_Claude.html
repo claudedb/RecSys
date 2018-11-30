@@ -315,26 +315,294 @@ l<sub>i,j</sub> = Entropie du terme i pour le document j</p>
 <h2>Présentation des modèles</h2>
 <div id="comparaison-des-termes" class="section level3">
 <h3>1) Comparaison des termes</h3>
+<p>Pour le modèle de comparaison terme-terme, nous faisons simplement une comparaison des cours entre eux avec une corrélation de spearman. Ensuite, on détermine les 10 cours les plus similaires pour chacun des cours. Avec l’entrée d’un cours, on choisit donc la ligne correspondante à ce cours. On utilise le code suivant pour générer les recommendations:</p>
+<pre class="r"><code>correlation.termes=cor(t(as.matrix(m.poly)),method=&quot;spearman&quot;)</code></pre>
+<pre><code>## Warning in cor(t(as.matrix(m.poly)), method = &quot;spearman&quot;): the standard
+## deviation is zero</code></pre>
+<pre class="r"><code>correlation.termes[is.na(correlation.termes)]=-1
+neighbors.termes &lt;-t(apply(correlation.termes,1,max.nindex.corr))
+id.cours1 &lt;- which(colnames(m.poly)==&quot;MEC1210&quot;) #Thermodynamique
+recommandations.terme &lt;- colnames(m.poly)[neighbors[id.cours1,]]
+recommandations.terme</code></pre>
+<pre><code>## [1] &quot;PHS1104&quot; &quot;GCH1510&quot; &quot;M-252&quot;   &quot;MEC3215&quot; &quot;MTR2211&quot;</code></pre>
 </div>
 <div id="tf-idf-1" class="section level3">
 <h3>2) TF-IDF</h3>
+<p>Pour le modèle TF-IDF, on utilise la même logique mais en utilisant une matrice modifiée TF-IDF pour faire les corrélations. Voici le code pour générer les recommandations:</p>
+<pre class="r"><code>log.m &lt;- log(m.poly)
+log.m[is.infinite(log.m)] &lt;- 0
+tf.idf &lt;- (1 + log.m) * log (n.courses/(rowSums(m.poly &gt; 0)+1))
+tf.idf[m.poly==0]=0
+
+correlation.tfidf &lt;-cor(as.matrix(tf.idf),method=&quot;spearman&quot;)
+neighbors.tfidf &lt;- t(apply(correlation.tfidf,1,max.nindex.corr))
+
+recommandations.tfidf &lt;- colnames(m.poly)[neighbors.tfidf[id.cours1,]]
+recommandations.tfidf</code></pre>
+<pre><code>## [1] &quot;PHS1104&quot; &quot;GCH1510&quot; &quot;M-252&quot;   &quot;MEC3215&quot; &quot;MTR2211&quot;</code></pre>
 </div>
 <div id="log-entropy-1" class="section level3">
 <h3>3) Log-Entropy</h3>
+<p>Log-Entropy reprend la même logique que le modèle précédent mais avec une transformation log-entropy. Voici le code:</p>
+<pre class="r"><code>pij &lt;- m.poly / rowSums(m.poly)
+log2.pij &lt;- log2(pij)
+log2.pij[is.infinite(log2.pij)] &lt;- 0
+global.entropy &lt;- 1 + rowSums((pij * log2.pij * pij)/log2(n.courses))
+log.entropy &lt;- log2(1 + m.poly) * global.entropy
+
+correlation.ent &lt;- cor(as.matrix(log.entropy),method=&quot;spearman&quot;)
+neighbors.ent&lt;-t(apply(correlation.ent,1,max.nindex.corr))
+
+recommandations.ent &lt;- colnames(m.poly)[neighbors.ent[id.cours1,]]
+recommandations.ent</code></pre>
+<pre><code>## [1] &quot;PHS1104&quot; &quot;GCH1510&quot; &quot;M-252&quot;   &quot;MEC3215&quot; &quot;MTR2211&quot;</code></pre>
 </div>
 <div id="lsa-1" class="section level3">
 <h3>4) LSA</h3>
+<p>Pour les modèles LSA, nous changerons simplement les matrices d’entrée par les matrices avec les différentes transformations. Nous utiliseront le package LSA de R. On utilise la fonction LSA() qui décompose en facteur latent et la fonction as.textmatrix() qui prend les facteurs latents en entrée et retourne une matrice qui sera utilisé pour faire les corrélations.</p>
+<p>Voici le code pour LSA avec la matrice d’entrée terme-document originale:</p>
+<pre class="r"><code>X.lsa &lt;- as.textmatrix(lsa(m.poly,dims=50))</code></pre>
+<pre><code>## Warning in lsa(m.poly, dims = 50): [lsa] - there are singular values which
+## are zero.</code></pre>
+<pre class="r"><code>correlation.lsa &lt;- cor(as.matrix(X.lsa),method=&quot;spearman&quot;)
+neighbors.lsa &lt;-t(apply(correlation.lsa,1,max.nindex.corr))
+
+recommandations.lsa &lt;- colnames(m.poly)[neighbors.lsa[id.cours1,]]
+recommandations.lsa</code></pre>
+<pre><code>## [1] &quot;GCH1510&quot; &quot;PHS1104&quot; &quot;M-254&quot;   &quot;GBM2620&quot; &quot;MTR2211&quot;</code></pre>
 </div>
 <div id="tf-idf---lsa" class="section level3">
 <h3>5) TF-IDF -&gt; LSA</h3>
+<p>Voici le code pour générer la matrice TF-IDF LSA qui prend comme entrée la matrice TF-IDF:</p>
+<pre class="r"><code>lsaSpace.tfidf &lt;- lsa(tf.idf,dims=50)</code></pre>
+<pre><code>## Warning in lsa(tf.idf, dims = 50): [lsa] - there are singular values which
+## are zero.</code></pre>
+<pre class="r"><code>X.lsa.tfidf &lt;- as.textmatrix(lsaSpace.tfidf)
+correlation.lsa.tfidf &lt;- cor(as.matrix(X.lsa.tfidf),method=&quot;spearman&quot;)
+neighbors.lsa.tfidf&lt;-t(apply(correlation.lsa.tfidf,1,max.nindex.corr))
+
+recommandations.lsa.tfidf &lt;- colnames(m.poly)[neighbors.lsa.tfidf[id.cours1,]]
+recommandations.lsa.tfidf</code></pre>
+<pre><code>## [1] &quot;GCH1510&quot; &quot;PHS1104&quot; &quot;M-252&quot;   &quot;MTR2211&quot; &quot;MET6209&quot;</code></pre>
 </div>
 <div id="log-entropy---lsa" class="section level3">
 <h3>6) Log-Entropy -&gt; LSA</h3>
+<p>Voici le code pour générer la matrice Log-Entropy LSA qui prend comme entrée la matrice Log Entropy:</p>
+<pre class="r"><code>lsaSpace.entropy &lt;- lsa(log.entropy, dims=50)</code></pre>
+<pre><code>## Warning in lsa(log.entropy, dims = 50): [lsa] - there are singular values
+## which are zero.</code></pre>
+<pre class="r"><code>X.lsa.ent &lt;- as.textmatrix(lsaSpace.entropy)
+correlation.lsa.ent &lt;- cor(as.matrix(X.lsa.ent),method=&quot;spearman&quot;)
+neighbors.lsa.ent &lt;- t(apply(correlation.lsa.ent,1,max.nindex.corr))
+
+recommandations.lsa.ent&lt;- colnames(m.poly)[neighbors.lsa.ent[id.cours1,]]
+recommandations.lsa.ent</code></pre>
+<pre><code>## [1] &quot;PHS1104&quot; &quot;GCH1510&quot; &quot;MEC3215&quot; &quot;MTR2211&quot; &quot;GBM2620&quot;</code></pre>
 </div>
 </div>
 </div>
 <div id="resultats" class="section level1">
 <h1>Résultats</h1>
+<p>Dans cette section, on traitera de la méthodologie et les principaux résultats seront présentés. ## Méthodologie Notre expérience peut être segmentée en 5 étapes que voici :</p>
+<ol style="list-style-type: decimal">
+<li><p>Calcul des matrices: Pour nos 6 modèles les matrices de recommandation sont générées. En ce qui concerne les méthodes LSA, on doit fixer le nombre de dimensions de la réduction. Habituellement, si on avait à notre disponibilité un “ground truth”, on aurait fixé comme hyperparamètre ce nombre de dimensions optimal et on l’aurait déterminé par validation croisée. Comme ce n’est pas le cas, on pose ce nombre de dimensions à 50 de façon arbitraire et on le fera varier dans les analyses post-traitement.</p></li>
+<li><p>Une fois les matrices compilées, on calcule les corrélations de Spearman entre les cours et, pour un cours cible, on sort les 5 cours avec corrélations maximales pour les recommandations.</p></li>
+<li>Sélection de 6 cours tests de domaines différents: comme on dispose de 1200 cours, on rétréciera notre ensemble de test pour effectuer le sondage. Étant donné que ce sont des cours que nous avons suivis et aimés, nous serons en mesure de juger les recommandations adéquatement. Les cours choisis sont les suivants:</li>
+</ol>
+<ul>
+<li><p>MEC2115: Méthodes expérimentales et mesures en mécanique</p></li>
+<li><p>AR320: Aérodynamique II</p></li>
+<li><p>MEC1210: Thermodynamique</p></li>
+<li><p>MTH1006: Algèbre Linéaire</p></li>
+<li><p>INF2010: Structures de données et algorithmes</p></li>
+<li><p>IND4704: Théorie de la décision</p></li>
+</ul>
+<p>Au total, il y a eu 5 recommandations pour 6 méthodes et pour 6 cours, donc 180 notes au total. Pour réduire le temps du sondage, Mikael a évalué les cours MEC1210, MTH1006 et MEC2115 alors que Claude a évalué INF2010, AR320 et IND4704.</p>
+<ol start="4" style="list-style-type: decimal">
+<li>Pour les recommandations de ces 6 cours, on effectue un sondage dans lequel on octroie des notes allant de 1 à 5 pour chaque recommandation. Faute de temps, les deux seuls répondants à ce sondage sont Mikael et Claude. Les qualités qui sont jugées dans ce sondage sont la pertinence et la nouveauté des recommandations. Plus précisément, voici la signification des notes sur laquelle l’équipe s’est entendue:</li>
+</ol>
+<ul>
+<li><p>1: Aucun lien avec le cours cible</p></li>
+<li><p>2: Même domaine, mais pas les mêmes concepts (ex: un cours de calcul est recommandée pour un cours d’algèbre linéaire )</p></li>
+<li><p>3: Mêmes concepts, différents domaines (ex: un cours de thermodynamique en génie chimique est recommandée pour un cours de thermodynamique en génie mécanique)</p></li>
+<li><p>4: Cours similaires en tous points, mais redondant.</p></li>
+<li><p>5: Cours similaires en tous points et qu’on serait interessé à suivre pour étendre nos horizons découlant du cours cible.</p></li>
+</ul>
+<p>Par ailleurs, nous avons pensé à créer notre propre “ground truth”, mais on s’est arrêté à deux problèmes principaux. D’une part, on aurait pu créer une métrique de précision basée sur le nombre de cours dans le même programme que l’algorithme réussit à prédire. Toutefois, comme notre but est de prédire des cours hors cursus, cette métrique ne serait pas un indicateur de succès. D’autre part, la seule méthode légitime pour se créer un “ground truth” aurait été de parcourir toutes les descriptions de cours et de sélectionner manuellement des descriptions qui seraient voulues selon nos critères subjectif. Or, comme il aurait fallu passer au travers de tout le corpus pour avoir une vision exhaustive des cours qui devraient optimalement être recommandées, nous nous sommes dit qu’un sondage accomplirait le même objectif, tout en réduisant le temps d’analyse (environ 1200 descriptions de cours).</p>
+<ol start="5" style="list-style-type: decimal">
+<li>Analyses post-traitement. Ces analyses sont des variations et des études plus poussées par rapport à la méthode de calcul initiale. On parle ici de variation du nombre de dimensions des méthodes LSA et une méthode de focus sur les dimensions cibles qui sera expliquée prochainement.</li>
+</ol>
+</div>
+<div id="presentation-des-resultats" class="section level1">
+<h1>Présentation des résultats</h1>
+<p>D’abord, voici un exemple de recommandations en fonction des méthodes pour le cours de thermodynamique (l’ordre de haut en bas est l’ordre décroissant des corrélations) :</p>
+<pre><code>##      terme.terme tf.idf     log.entropy lsa       lsa.tfidf  lsa.entropy
+## [1,] &quot;PHS1104&quot;   &quot;GCH6112A&quot; &quot;PHS1104&quot;   &quot;GCH1510&quot; &quot;GCH2525&quot;  &quot;PHS1104&quot;  
+## [2,] &quot;GCH1510&quot;   &quot;ELE6216&quot;  &quot;GCH1510&quot;   &quot;PHS1104&quot; &quot;MET6208&quot;  &quot;GCH1510&quot;  
+## [3,] &quot;M-252&quot;     &quot;GBM6125&quot;  &quot;M-252&quot;     &quot;M-254&quot;   &quot;GCH1510&quot;  &quot;MEC3215&quot;  
+## [4,] &quot;MEC3215&quot;   &quot;ICM4316&quot;  &quot;MEC3215&quot;   &quot;GBM2620&quot; &quot;GCH3510&quot;  &quot;MTR2211&quot;  
+## [5,] &quot;MTR2211&quot;   &quot;GLQ3205&quot;  &quot;MTR2211&quot;   &quot;MTR2211&quot; &quot;GCH6912A&quot; &quot;GBM2620&quot;</code></pre>
+<p>Pour ce cours, on remarque d’abord que les recommandations pour chacune des méthodes sont assez similaires. De plus, on observe aussi que, malgré le fait que ce soit un cours de génie mécanique, ce sont plutôt des cours de génie physique et génie chimique qui apparaissent comme recommandation principale. Ceci est logique, puisque la thermodynamique est une matière qui relève directement de ces domaines.</p>
+<p>Montrons maintenant un graphique qui synthétise les résultats du sondage (ces derniers sont présentés intégralement en annexe) : <img src="data:image/png;base64,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KqACmkhABVRABVRAEwmogAqogApoIgEVUAEVUAFNJKACKqACKqCJBFRABVRABTSRgAqogAqogCYSUAEVUAEV0EQCKqACKqACmkhABVRABVRAEwmogAqogApoIgEVUAEVUAFNJKACKqACKqCJBFRABVRABTSRgAqogAqogCYSUAEVUAEV0EQCKqACKqACmkhABVRABVRAEwmogAqogApooiICOtppgAHdvcO7fdEO9xXQ9F0qNqDd7ZKAroxXb1tuoYCA7rsvDi6g7WMZOzX37nA/Ae2yNns2LKAC2qkiAvolN/oXXem+AtrT/bi/gKbvUrEB7W6XBHRlvHrbcgsCKqACKqACmkhABVRABVRAEwmogAqogApoIgEVUAEVUAFNJKACKqACKqCJBFRABVRABTSRgAqogAqogCYSUAEVUAEV0EQCKqACKqACmkhABVRABVRAEwmogAqogApoIgEVUAEVUAFNJKACKqACKqCJBFRABVRABTSRgAqogAqogCYSUAEVUAEV0EQCKqACKqACmkhABVRABVRAEwmogAqogApoIgEVUAEVUAFNJKACKqACKqCJBFRABVRABTSRgAqogAqogCYSUAEVUAEV0EQCKqACKqACmkhABVRABVRAEwmogAqogApoIgEVUAEVUAFNdPQB3WP3hrsL6G5HGdAvGejuarNHibUR0DgCKqDHH9AvG2gBjdglAV0Zr9623MLRB3TXjd7bHbnQ+3GXt9Luy/ZzIxV6KwloHAEV0DLuxwJaxK0koHEEVEDLuB8LaBG3koDGEVABLeN+LKBF3EoCGkdABbSM+7GAFnErCWgcARXQMu7HAlrErSSgcQRUQMu4HwtoEbeSgMYRUAEt434soEXcSgIaR0AFtIz7sYAWcSsJaBwBFdAy7scCWsStJKBxBFRAy7gfC2gRt5KAxhFQAS3jfiygRdxKAhpHQAW0jPuxgBZxKwloHAEV0DLuxwJaxK0koHEEVEDLuB8LaBG3koDGEVABLeN+LKBF3EoCGkdABbSM+7GAFnErCWgcARXQMu7HAlrErSSgcQRUQMu4HwtoEbeSgMYRUAEt434soEXcSgIaR0AFtIz7sYAWcSsJaBwBFdAy7scCWsStJKBxBFRAy7gfC2gRt5KAxhFQAS3jfiygRdxKAhpHQAW0jPuxgBZxKwloHAEV0DLuxwJaxK0koHEE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" width="672" /></p>
+<p>Dans la figure ci-dessus, l’axe des abscisses représente les notes qui ont été octroyées aux cours. Sur l’axe des ordonnées, on trouve le nombre de fois que ces notes ont été données. Les bandes bleues ont été utilisées pour illustrer les méthodes non-LSA (corrélation faite directement sur la matrice termes-documents, moyennant parfois certains traitements) tandis que les bandes rouges sont utilisées pour les méthodes LSA (matrice termes-documents parfois traitée et donnée en entrée dans une fonction LSA). A priori, on observe que les recommandations sont très bonnes et ce, pour la plupart des méthodes.</p>
+<p>Les moyennes des cours sont compilées dans le tableau suivant:</p>
+<pre><code>##          Moy
+## MEC1210 4.13
+## MTH1006 4.00
+## MEC2115 3.00
+## INF2010 3.90
+## AR320   4.77
+## IND4704 3.50</code></pre>
+<p>On voit dans ce tableau que les deux notes les plus hautes sont les cours de thermodynamique (MEC1210) et Aérodynamique (AR320) alors que les deux notes les plus basses sont les cours d’instrumentation (MEC2115) et de prise de décision industrielle (IND4704). Une explication plausible est que ces méthodes performent bien pour des domaines techniques. Par exemple, en aérodynamique, les mêmes termes technique reviennent plus souvent (ex: profil d’aile, écoulement de Bernouilli, couche limite) et donc, les méthodes non-LSA performent mieux. En ce qui concerne les cours, avec les moins bonnes notes, on remarque qu’il s’agit de cours plutôt généraux, la théorie de la mesure ainsi que la précision étant commune à plusieurs domaines.</p>
+<p>Ensuite, on présente un tableau synthétisant les moyennes des notes des méthodes pour chaque répondant:</p>
+<pre><code>##             Moy.Mikael Moy.Claude Moy.Totale
+## terme.terme       4.13       4.27       4.20
+## tf.idf            2.53       3.33       2.93
+## log.entropy       4.13       4.27       4.20
+## lsa               4.53       3.73       4.13
+## lsa.tfidf         2.93       4.47       3.70
+## lsa.ent           4.00       4.27       4.13</code></pre>
+<p>On observe deux points importants. D’une part, les méthodes log.entropy et terme-terme donnaient exactement les mêmes résultats. D’autre part, les méthodes impliquant le TF-IDF en pré-traitement donnent nettement les résultats les moins bons; nous essaierons d’investiguer pourquoi dans la section suivante. # Analyse Dans cette section, on procèdera à différentes analyses post-traitement sur les résultats obtenus à la section précédente.</p>
+<div id="tf-idf-2" class="section level2">
+<h2>TF-IDF</h2>
+<p>Afin d’investiguer la raison pour laquelle les méthodes impliquant le TF-IDF donnent les moins bons résultats, on sort les mots avec les TF-IDF maximaux (calculés avec la normalisation logarithmique de l’article [1]) pour chacun de nos cours tests:</p>
+<pre><code>##         [,1]          [,2]       [,3]        [,4]         [,5]     
+## MTH1006 &quot;vectoriel&quot;   &quot;matric&quot;   &quot;espac&quot;     &quot;homogen&quot;    &quot;vecteur&quot;
+## MEC1210 &quot;parfait&quot;     &quot;pure&quot;     &quot;entropi&quot;   &quot;substanc&quot;   &quot;cycl&quot;   
+## MEC2115 &quot;informatis&quot;  &quot;acquisit&quot; &quot;huileus&quot;   &quot;prefix&quot;     &quot;fourni&quot; 
+## AR320   &quot;arodynamiqu&quot; &quot;hlicoptr&quot; &quot;coulement&quot; &quot;potentiel&quot;  &quot;profil&quot; 
+## INF2010 &quot;arbr&quot;        &quot;file&quot;     &quot;algorithm&quot; &quot;sequentiel&quot; &quot;manipul&quot;
+## IND4704 &quot;decis&quot;       &quot;jeux&quot;     &quot;collect&quot;   &quot;prise&quot;      &quot;huileus&quot;
+##         [,6]      [,7]          [,8]      [,9]          [,10]   
+## MTH1006 &quot;lineair&quot; &quot;propr&quot;       &quot;huileus&quot; &quot;prefix&quot;      &quot;fourni&quot;
+## MEC1210 &quot;melang&quot;  &quot;huileus&quot;     &quot;prefix&quot;  &quot;fourni&quot;      &quot;dela&quot;  
+## MEC2115 &quot;dela&quot;    &quot;bioconcentr&quot; &quot;econo&quot;   &quot;hough&quot;       &quot;lumir&quot; 
+## AR320   &quot;thori&quot;   &quot;huileus&quot;     &quot;prefix&quot;  &quot;fourni&quot;      &quot;dela&quot;  
+## INF2010 &quot;graph&quot;   &quot;huileus&quot;     &quot;prefix&quot;  &quot;fourni&quot;      &quot;dela&quot;  
+## IND4704 &quot;prefix&quot;  &quot;fourni&quot;      &quot;dela&quot;    &quot;bioconcentr&quot; &quot;econo&quot;</code></pre>
+<p>Or, on voit que les termes “huileus”, “prefix” et “fourni” se retrouvent dans les tops de tous les cours. Regardons maintenant les mots à TF-IDF maximaux dans tout le corpus. On sort les 100 mots ayant les TF-IDF maximaux et minimaux :</p>
+<pre><code>##              Bottom             Top
+## 1              null     prcontraint
+## 2         titrecour             jat
+## 3   descriptioncour         surtens
+## 4                de         chausse
+## 5                un    manufacturir
+## 6               dan            houl
+## 7            analys             ada
+## 8            applic        temporis
+## 9           concept           lumir
+## 10              aux             sst
+## 11           system      formabilit
+## 12         techniqu             ctl
+## 13          travail              cp
+## 14          rapport             cfd
+## 15           method       decrochag
+## 16           projet         huileus
+## 17              sou            pass
+## 18        introduct        cologiqu
+## 19           notion            dgel
+## 20          gestion     arolasticit
+## 21          problem  microcontrleur
+## 22          princip         nerveux
+## 23         structur             mef
+## 24             tude  biomicrosystem
+## 25         programm       diphasiqu
+## 26             base          dsagrg
+## 27           utilis        polyphas
+## 28           calcul       radiofrqu
+## 29             type           meubl
+## 30       industriel        anticorp
+## 31             geni          osseux
+## 32            etudi       clavardag
+## 33             etud        arospati
+## 34         fonction             iao
+## 35             heur           langu
+## 36         recherch           breve
+## 37           direct     turbomoteur
+## 38            mesur  heterostructur
+## 39             cour  nanotechnologi
+## 40         developp         ontolog
+## 41            model               f
+## 42         mecaniqu    trigonometri
+## 43            evalu             tec
+## 44         logiciel           siecl
+## 45         dynamiqu         sensori
+## 46             moin           patch
+## 47          pratiqu          dmodul
+## 48         propriet             irc
+## 49            ainsi  optolectroniqu
+## 50         processu          camion
+## 51            donne      arolastiqu
+## 52       professeur       enterpris
+## 53               se         chainag
+## 54             norm              by
+## 55       laboratoir    hypersustent
+## 56          present         shannon
+## 57               ca           clamp
+## 58              non      cancerigen
+## 59           realis        calibrag
+## 60           commun       informati
+## 61                s           galoi
+## 62          modelis      trajectoir
+## 63            equip    biophotoniqu
+## 64          product      doublement
+## 65          physiqu       petrolier
+## 66            effet             sti
+## 67        ingenieri             lin
+## 68          control         inciner
+## 69             autr              gi
+## 70            outil           modbu
+## 71             form          prsenc
+## 72           integr        urbanism
+## 73             mise            hook
+## 74            systm         estuair
+## 75          definit             mcu
+## 76         numeriqu         heritag
+## 77             entr             fly
+## 78   caracteristiqu       perglisol
+## 79         environn            mare
+## 80          activit     geomecaniqu
+## 81       traitement        multitag
+## 82          pendant            cuve
+## 83            solut       biosystem
+## 84             oral      clairement
+## 85           redact        opratoir
+## 86           niveau        extrieur
+## 87         descript         composs
+## 88           theori          papeti
+## 89          chimiqu           parit
+## 90            simul        directif
+## 91            stage        geochimi
+## 92           proced        luminair
+## 93          comport         metteur
+## 94        entrepris      flexibilit
+## 95           qualit      sdimentair
+## 96        materiaux            poli
+## 97             temp          enfant
+## 98         supervis            parc
+## 99             plan  neuromusculair
+## 100             fin sedimentologiqu</code></pre>
+<p>Par exemple, on remarque que le terme “huileus” survient à la 16e position des plus grands TF-IDF dans le corpus. Aussi, on sait que la normalisation logarithmique fait en sorte que des termes n’ayant pas de valeur dans la matrice termes-documents (i.e. ne se trouve pas dans le document) peuvent avoir une valeur dans la matrice TF-IDF. Conséquemment, on comprend pourquoi des termes ayant de hauts TF-IDF globaux peuvent avoir du poids dans les recommandations par rapport à un cours ne possédant même pas ces termes dans sa description, ce qui vient assurément fausser les résultats pour les méthodes impliquant TF-IDF (TF-IDF et LSA-TF-IDF). Notons que la méthode LSA classique, par exemple, n’est pas affectée par ce problème, puisque c’est la fonction LSA qui fait son propre prétraitement TF-IDF.</p>
+<p>Par ailleurs, pour remédier à ce problème, les auteurs de l’articles supprimaient les termes ayant un TF-IDF supérieur à une certaine borne et cette borne était déterminée par validation croisée. Cependant, étant donné que nous ne possédons pas de “ground truth”, on ne peut pas déterminer cette borne. Alors, pour simplifier le tout, nous allons regénérer les TF-IDF maximaux de deux façons différentes: 1)En posant nulle les valeurs des termes dans la matrice TF-IDF qui ne possènent pas de valeur dans la matrice termes-documents 2) En calculant un TF-IDF classique sans normalisation logarithmique. Pour les résultats qui suivent, ces deux méthodes donnent exactement la même sortie, on les traitera donc comme une seule. Voici les TF-IDF maximaux de nos cours avec la correction :</p>
+<pre><code>##         [,1]          [,2]         [,3]       [,4]        [,5]        
+## MTH1006 &quot;vectoriel&quot;   &quot;espac&quot;      &quot;lineair&quot;  &quot;matric&quot;    &quot;homogen&quot;   
+## MEC1210 &quot;cycl&quot;        &quot;parfait&quot;    &quot;pure&quot;     &quot;entropi&quot;   &quot;substanc&quot;  
+## MEC2115 &quot;mesur&quot;       &quot;informatis&quot; &quot;acquisit&quot; &quot;mecaniqu&quot;  &quot;instrument&quot;
+## AR320   &quot;arodynamiqu&quot; &quot;coulement&quot;  &quot;hlicoptr&quot; &quot;potentiel&quot; &quot;profil&quot;    
+## INF2010 &quot;algorithm&quot;   &quot;arbr&quot;       &quot;file&quot;     &quot;donne&quot;     &quot;sequentiel&quot;
+## IND4704 &quot;decis&quot;       &quot;prise&quot;      &quot;jeux&quot;     &quot;collect&quot;   &quot;actuariel&quot; 
+##         [,6]      [,7]      [,8]             [,9]          [,10]        
+## MTH1006 &quot;vecteur&quot; &quot;plan&quot;    &quot;propr&quot;          &quot;schmidt&quot;     &quot;orthonormal&quot;
+## MEC1210 &quot;melang&quot;  &quot;gaz&quot;     &quot;thermodynamiqu&quot; &quot;otto&quot;        &quot;brayton&quot;    
+## MEC2115 &quot;experim&quot; &quot;instrum&quot; &quot;conditionneur&quot;  &quot;metrologiqu&quot; &quot;mesurag&quot;    
+## AR320   &quot;thori&quot;   &quot;hlice&quot;   &quot;joukowski&quot;      &quot;doublet&quot;     &quot;rotor&quot;      
+## INF2010 &quot;manipul&quot; &quot;graph&quot;   &quot;structur&quot;       &quot;retrait&quot;     &quot;parcour&quot;    
+## IND4704 &quot;repet&quot;   &quot;lectr&quot;   &quot;ahp&quot;            &quot;multicriter&quot; &quot;nash&quot;</code></pre>
+<p>On voit maintenant qu’il n’y a plus de termes irréguliers. De plus, on conclut aussi que TF-IDF fait un bon travail pour identifier les termes significatifs pour chacun des cours. En regénérant d’autres recommandations avec cette correction, on conclut que TF-IDF donne exactement les mêmes résultats que termes-termes tandis que LSA-TF-IDF donnent exactement les mêmes résultats que LSA classique.</p>
+</div>
+<div id="variations-lsa" class="section level2">
+<h2>Variations LSA</h2>
+</div>
 </div>
 <div id="conclusion" class="section level1">
 <h1>Conclusion</h1>
