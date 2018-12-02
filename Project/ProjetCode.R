@@ -63,7 +63,7 @@ m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 #À décommenter si on veut faire le focus sur le cours 
 #MEC1210
-m.poly=cbind(m.poly[,739:851],m.poly[,1:738],m.poly[,852:1159])
+#m.poly=cbind(m.poly[,739:851],m.poly[,1:738],m.poly[,852:1159])
 
 # Similarite terme-terme --------------------------------------------------
 
@@ -187,7 +187,7 @@ tableau.top=data.frame(mots=name.top100)
 tableau.least=data.frame(mots=name.least100)
 
 
-#Infos nices
+#Infos complémentaires
 #On sort les tf-idf maximaux
 tf.idf.reduit=tf.idf[,index.cours]
 tf.idf.max=t(apply(t(tf.idf.reduit),1,max.nindex.tfidf))

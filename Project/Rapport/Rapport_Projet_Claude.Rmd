@@ -1,20 +1,22 @@
 ---
-title: "Rapport Projet: Approche Contenu pour recommendation de cours à Polytechnique"
+title: 'Rapport Projet: Approche Contenu pour recommendation de cours Ã  Polytechnique'
 author: "Claude Demers-Belanger (1534217) & Mikael Perreault (1741869)"
 date: "November 30, 2018"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F)
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(Matrix,data.table,tidyr,readr,dplyr,ggplot2,lsa,tidytext, knitr)
 rm(list=ls())
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 order.partial=function(vec)
   {
   idx<-which(vec<=sort(vec,partial=11)[11])
@@ -39,8 +41,8 @@ min.nindex <- function(m, n=5) {
   i <- order(m, decreasing=FALSE)
   return(i[1:n])
 }
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
 m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
@@ -237,29 +239,29 @@ color=c("#DCF0F8","#368ECA","#146594","#FBDEE1","#DE4243","#991915")
 
 # Introduction
 
-Dans la cadre du cours LOG6308, nous avons conçu un système de recommandation de cours pour la Polytechnique de Montréal qui prend comme entrée un cours qui aurait été apprécié par l'utilisateur et lui retourne n cours recommandés. Nous avons, pour l'instant, fixé le nombre de recommandations à 5 cours.
+Dans la cadre du cours LOG6308, nous avons conçu un système de recommandation de cours pour la Polytechnique de Montréal qui prend comme entrée un cours qui aurait été apprécié par l'utilisateur et lui retourne un certain nombre de cours recommandés. Nous avons, pour l'instant, fixé le nombre de recommandations à 5 cours.
 
 ## Motivation
 
 Plusieurs raisons nous ont poussé à réaliser ce projet.
 
-* Créer un outil de comparaison et de recommandation de cours. En ce moment, les outils de recherche de cours sont limités. Ils consistent uniquement d'outil de recherche par mots clés.
+* Créer un outil de comparaison et de recommandation de cours. En ce moment, les outils de recherche de cours sont limités. Ils consistent uniquement en des outils de recherche par mots clés.
 
-* Obtenir un moyen de recommander des cours hors cursus. Les étudiants présentement ont facilement accès à la liste de cours de leur cursus, mais parfois certains étudiants pourraient vouloir suivre des cours hors cursus, plus centrés sur leurs intérêts
+* Obtenir un moyen de recommander des cours hors cursus. Présentement,  les étudiants  ont facilement accès à la liste de cours de leur cursus, mais parfois, certains étudiants pourraient vouloir suivre des cours hors cursus, plus centrés sur leurs intérêts.
 
-* En faisant ce projet, nous avons mis en place les premières étapes pour le design d'un système de recommandations de cours mais, nous avons aussi imaginé quelles seraient les étapes suivantes pour avoir un système complet et efficace.
+* En faisant ce projet, nous avons mis en place les premières étapes pour le design d'un système de recommandations de cours, mais nous avons aussi imaginé quelles seraient les étapes suivantes pour avoir un système complet et efficace.
 
-* Apprendre les rudiments de l'analyse textuel. Ces concepts ont été vaguement mentionnés dans le cours, mais nous avions un désir de pousser nos connaissances davantage.
+* Apprendre les rudiments de l'analyse textuelle. Ces concepts ont été vaguement mentionnés dans le cours, mais nous avions un désir de pousser nos connaissances davantage pour se développer une intuition.
 
 ## Dataset
 
-Le set de données original est composé des descriptions de tous les cours de U de M, UQAM, HEC et Polytechnique. Chaque ficher .txt de description comprend le titre du cours et sa description. Nous avons remarqué, lors de nos analyse, certaines irrégularitées dans les descriptions en ce qui attrait au traitement des accents. Certains mots avaient des accents retirés simplement, d'autres avaient la lettre complètement retirée.
+Le set de données original est composé des descriptions de tous les cours de U de M, UQAM, HEC et Polytechnique. Chaque ficher .txt de description comprend le titre du cours et sa description. Nous avons remarqué, lors de nos analyse, certaines irrégularités dans les descriptions en ce qui attrait au traitement des accents. Certains mots avaient des accents retirés simplement, d'autres avaient la lettre complètement retirée.
 
 Pour notre projet, nous avons décidé de conserver seulement les cours de polytechnique pour limiter le temps de calcul. Aussi, nous avons retiré tous les cours dont la description était de moins de 20 mots. Ce qui équivalait à 2 écarts types sous la moyenne du nombre de mots par description. Pour plus de détails sur la moyenne et l'écart type du nombre de mot, voir la section [Analyse Exploratoire des Données](#anchor). 
 
-De plus, lors de la création de la matrice Termes - Documents (Termes - Cours dans notre cas) un stemming a été réalisé pour retirer les marques de pluriels et de feminin. Cependant, le stemming ne semblait pas régulier,ceci probablement du au fait que dans les descriptions originales, certains mots avaient été coupé de façon irrégulière. Nous n'avons pas tenu des irrégularités dans nos calculs. Dans un travail futur, un analyse en détail pourrait être faite.
+De plus, lors de la création de la matrice termes - documents (termes - cours dans notre cas) un stemming a été réalisé pour retirer les marques de pluriels et de feminin. Cependant, le stemming ne semblait pas régulier,ceci probablement dû au fait que, dans les descriptions originales, certains mots avaient été coupé de façon irrégulière. Nous n'avons pas tenu compte des irrégularités dans nos calculs. Dans un travail futur, une analyse en détails pourrait être faite sur ce sujet.
 
-En résumé, nous utiliserons, pour nos calculs, la matrice terme (ligne) cours (colonne) de polytechnique sans les cours qui ont été retiré en raison des descriptions trop courtes. De plus, pour simplifier la matrice, nous avons retiré les mots qui ne figuraient dans aucune description de poly.
+En résumé, nous utiliserons pour nos calculs la matrice termes (ligne) cours (colonne) de polytechnique sans les cours qui ont été retiré en raison des descriptions trop courtes. De plus, pour simplifier la matrice, nous avons retiré les mots qui ne figuraient dans aucune description de Polytechnique.
 
 Dans la section suivante, nous ferons un exploration de la matrice pour tenter de mieux comprendre le dataset.
 
@@ -268,8 +270,8 @@ Dans la section suivante, nous ferons un exploration de la matrice pour tenter d
 ```{r text.data m.text courses.data courses.data.poly terms.data id.poly m.poly, echo=F}
 
 # Data Load
-#setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
-setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
+setwd('C:/Users/mikap/OneDrive/Documents/GitHub/RecSys/Project')
+#setwd('C:/Users/claudedb/Documents/GitHub/RecSys/Project')
 text.data<-data.table(read.table("data/out.matrix",sep=" ",skip=2))
 colnames(text.data)<-c('courses.id','terms.id','n')
 m.text <- sparseMatrix(text.data$terms.id,text.data$courses.id,x=text.data$n)
@@ -292,9 +294,9 @@ m.poly<-m.poly[rowSums(m.poly) > 0,]
 
 ```
 
-Trouvons le terme qui revient le plus souvent et la moyenne de fois qu'il revient par document. C'est le terme  **"`r rownames(m.poly)[which.max(rowSums(m.poly))]`"** qui revient le plus souvent dans les documents. Il revient **`r max(rowSums(m.poly))`** fois et en moyenne **`r max(rowSums(m.poly))/dim(m.poly)[2]`** par document. En réduisant la matrice terme document originale avec seulement les cours de polytechnique, on conserve **`r round(100*dim(m.poly)[1]/dim(m.text)[1])`%** des termes et **`r round(100*dim(m.poly)[2]/dim(m.text)[2])`%** des documents. 
+Trouvons le terme qui revient le plus souvent et la moyenne de fois qu'il revient par document. C'est le terme  **"`r rownames(m.poly)[which.max(rowSums(m.poly))]`"** qui revient le plus souvent dans les documents. Il revient 11332 fois et en moyenne **`r max(rowSums(m.poly))/dim(m.poly)[2]`** par document. En réduisant la matrice termes-documents originale avec seulement les cours de Polytechnique, on conserve **`r round(100*dim(m.poly)[1]/dim(m.text)[1])`%** des termes et **`r round(100*dim(m.poly)[2]/dim(m.text)[2])`%** des documents. 
 
-On analyse ensuite la matrice terme document des cours de poly et on trouve qu'en moyenne les cours ont une descriptions de **`r mean(colSums(m.poly))` mots** et un écart type de **`r sd(colSums(m.poly))` mots**. Sachant ceci, nous avons donc décidé de conserver seulement les cours qui ont plus de (Moyenne - 2 écart type) mot, donc tous les cours de plus de 20 mots environ. 
+On analyse ensuite la matrice terme document des cours de poly et on trouve qu'en moyenne les cours ont une descriptions de **`r mean(colSums(m.poly))` mots** et un écart type de **`r sd(colSums(m.poly))` mots**. Sachant ceci, nous avons donc décidé de conserver seulement les cours qui ont plus de (Moyenne - 2 écart type) mots, donc tous les cours de plus de 20 mots environ. 
 
 ```{r echo = F }
 m.poly <- m.poly[,colSums(m.poly) > 20]
@@ -309,7 +311,7 @@ max.words.table <- data.frame(n = word.occurence[max.words])
 ```
 Ceci retire seulement **`r length(id.poly) - ncol(m.poly)` cours** de notre matrice. Nous aurons donc, au total, **`r ncol(m.poly)`** cours avec en moyenne **`r mean(colSums(m.poly))` mots**.  
   
-Regardons deux graphiques. Le premier un histogramme du nombre de mots par documents le second, le nombre d'occurence par mot.
+Regardons deux graphiques. Le premier est un histogramme du nombre de mots par documents etle second, un histogramme du nombre d'occurrences par mot.
 
 ```{r echo = F}
 ggplot(data.frame(word.per.doc), aes(word.per.doc))+ geom_histogram(binwidth = 5) +
@@ -319,18 +321,18 @@ ggplot(data.frame(word.per.doc), aes(word.per.doc))+ geom_histogram(binwidth = 5
 word.occurence.100 <- word.occurence
 word.occurence.100[word.occurence >100] <- 100
 ggplot(data.frame(word.occurence.100), aes(word.occurence.100))+ geom_histogram(binwidth = 5) + 
-  ggtitle("Graph 2: Nombre d'occurence par mot") + xlab("Nombre d'occurence") +
-  ylab("Nombre de mot")
+  ggtitle("Graph 2: Nombre d'occurence par mot") + xlab("Nombre d'occurences") +
+  ylab("Nombre de mots")
 ```
   
-Pour mieux voir les occurences par mot, nous avons ajouté aux mots qui revenaient 100 fois tous les mots qui avaient plus de 100 occurences (**`r sum(word.occurence >100)` mots**).Ceci a été fait pour améliorer l'affichage des histogramme.  
+Pour mieux voir les occurrences par mot, nous avons ajouté aux mots qui revenaient 100 fois tous les mots qui avaient plus de 100 occurences (**`r sum(word.occurence >100)` mots**).Ceci a été fait pour améliorer l'affichage des histogrammes.  
 Voici la liste des mots qui reviennent le plus fréquemment et le nombre de fois qu'ils apparaissent;  
 `r kable(max.words.table, caption = " Les mots les plus populaire")`  
 
 
 # Cadre Théorique
 
-Pour le design de notre solution, nous nous sommes initialement basés sur l'article "Science Concierge: A Fast Content-Based Recommendation System for Scientific Publications" par Achakulvisut et autres.[^1] Dans l'article, on mentionne plusieurs transformation de matrice qui seront ensuite utilisés dans une méthode "Latent Semantic Analysis" (LSA). Ces transformations et la méthode LSA seront traitées lors des trois sections suivantes.
+Pour le design de notre solution, nous nous sommes initialement basés sur l'article "Science Concierge: A Fast Content-Based Recommendation System for Scientific Publications" par Achakulvisut et autres.[^1] Dans l'article, on mentionne plusieurs transformations de matrice qui seront ensuite utilisées dans une méthode "Latent Semantic Analysis" (LSA). Ces transformations et la méthode LSA seront traitées lors des trois sections suivantes.
 
 [^1]: Achakulvisut T, Acuna DE, Ruangrong T, Kording K (2016) Science Concierge: A Fast Content-Based Recommendation System for Scientific Publications. PLoS ONE 11(7): e0158423. doi:10.1371/journal.pone.0158423
 
@@ -349,7 +351,7 @@ f~i~ = Nombre de document contenant le terme i
 n = Nombre total de documents  
   
 
-On utilise la transformation du TF avec le log en ce basant sur l'article scientifique mentionné plus haut.
+On utilise la transformation du TF avec le log en se basant sur l'article scientifique mentionné plus haut.
 
 
 ## Log-Entropy
@@ -400,14 +402,14 @@ Avec la matrice $\hat{X}$, on peut maintenant procéder aux recommandations en gé
 
 ## Logique derrière les modèles
 
-La logique des modèles a été basés en partie sur l'article mentionné dans la partie cadre théorique [^1]. Nous sommes partie de la matrice terme-document pour créer des recommandations de base, ensuite nous avons appliqué des transformations (TF-IDF et Log-Entropy) à cette matrice pour générer de nouvelles recommandations. Par la suite, nous avons utilisé ces trois matrices comme entrée pour mettre dans une fonction LSA pour générer 3 nouvelles listes de recommandations.  
+La logique des modèles a été basée en partie sur l'article mentionné dans la partie cadre théorique [^1]. Nous sommes partis de la matrice termes-documents pour créer des recommandations de base, ensuite nous avons appliqué des transformations (TF-IDF et Log-Entropy) à cette matrice pour générer de nouvelles recommandations. Par la suite, nous avons utilisé ces trois matrices comme entrées pour mettre dans une fonction LSA pour générer 3 nouvelles listes de recommandations.  
 
-Ces recommandations prennent comme entrée un cours qu'un étudiant aurait apprécié, ensuite, on effectue un calcul de corrélation de Spearman pour trouver les n cours les plus similaires dans la matrice terme-document ou une des matrice modifiée. Pour faciliter le sondage nous avons décidé de générer seulement 5 recommandations par méthode (voir section [Résultats](#anchor) pour plus d'info sur le sondage).
+Ces recommandations prennent comme entrée un cours qu'un étudiant aurait apprécié. Ensuite, on effectue un calcul de corrélation de Spearman pour trouver les cours les plus similaires dans la matrice termes-documents ou une des matrices modifiées. Pour faciliter le sondage, nous avons décidé de générer seulement 5 recommandations par méthode (voir section [Résultats](#anchor) pour plus d'informatiosn sur le sondage).
 
 ## Présentation des modèles
 
 ###1) Comparaison des termes
-Pour le modèle de comparaison terme-terme, nous faisons simplement une comparaison des cours entre eux avec une corrélation de spearman. Ensuite, on détermine les 5 cours les plus similaires pour chacun des cours. Avec l'entrée d'un cours, on choisit donc la ligne correspondante à ce cours. Nous discuterons plus en détails des recommandations dans la section suivante. Cepdendat, voici l'exemple du code qui générera les recommandations pour le cours de thermodynamique en comparant terme à terme sans transformation de la matrice originale.  
+Pour le modèle de comparaison terme-terme, nous faisons simplement une comparaison des cours entre eux avec une corrélation de spearman. Ensuite, on détermine les 5 cours les plus similaires pour chacun des cours. Avec l'entrée d'un cours, on choisit donc la ligne correspondante à ce cours. Nous discuterons plus en détails des recommandations dans la section suivante. Cependant, voici l'exemple du code qui générera les recommandations pour le cours de thermodynamique en comparant terme à terme sans transformation de la matrice originale.  
 ```{r message=F, warning = F, echo = T}
 correlation.termes=cor(t(as.matrix(m.poly)),method="spearman")
 correlation.termes[is.na(correlation.termes)]=-1
@@ -465,6 +467,7 @@ X.lsa.ent <- as.textmatrix(lsaSpace.entropy)
 X.lsa.ent[1:20,1:8]
 
 ```
+
 # Résultats
 Dans cette section, on traitera de la méthodologie et les principaux résultats seront présentés. 
 ## Méthodologie 
@@ -475,7 +478,6 @@ Notre expérience peut être segmentée en 5 étapes que voici :
 2) Une fois les matrices compilées, on calcule les corrélations de Spearman entre les cours et, pour un cours cible, on sort les 5 cours avec corrélations maximales pour les recommandations.
 
 3) Sélection de 6 cours tests de domaines différents: comme on dispose de 1200 cours, on rétréciera notre ensemble de test pour effectuer le sondage. Étant donné que ce sont des cours que nous avons suivis et aimés, nous serons en mesure de juger les recommandations adéquatement. Les cours choisis sont les suivants:
-
 * MEC2115: Méthodes expérimentales et mesures en mécanique
 
 * AR320: Aérodynamique II 
@@ -491,7 +493,6 @@ Notre expérience peut être segmentée en 5 étapes que voici :
 Au total, il y a eu 5 recommandations pour 6 méthodes et pour 6 cours, donc 180 notes au total. Pour réduire le temps du sondage, Mikael a évalué les cours MEC1210, MTH1006 et MEC2115 alors que Claude a évalué INF2010, AR320 et IND4704. 
 
 4) Pour les recommandations de ces 6 cours, on effectue un sondage dans lequel on octroie des notes allant de 1 à 5 pour chaque recommandation. Faute de temps, les deux seuls répondants à ce sondage sont Mikael et Claude. Les qualités qui sont jugées dans ce sondage sont la pertinence et la nouveauté des recommandations. Plus précisément, voici la signification des notes sur laquelle l'équipe s'est entendue: 
-
 * 1: Aucun lien avec le cours cible 
 
 * 2: Même domaine, mais pas les mêmes concepts (ex: un cours de calcul est recommandée pour un cours d'algèbre linéaire )
@@ -513,9 +514,9 @@ comparaison
 ```
 Pour ce cours, on remarque d'abord que les recommandations pour chacune des méthodes sont assez similaires. De plus, on observe aussi que, malgré le fait que ce soit un cours de génie mécanique, ce sont plutôt des cours de génie physique et génie chimique qui apparaissent comme recommandation principale. Ceci est logique, puisque la thermodynamique est une matière qui relève directement de ces domaines. 
 
-Montrons maintenant un graphique qui synthétise les résultats du sondage (ces derniers sont présentés intégralement en annexe) : 
+Montrons maintenant un graphique qui synthétise les résultats du sondage (ces derniers sont présentés intégralement dans le fichier resultat.csv) : 
 ```{r echo=F}
-barplot(count, main="Performance des différentes méthodes",
+barplot(count, main="Graph 3: Performance des différentes méthodes",
         col=color,
         legend =method,args.legend = list(x = "topleft"), beside=TRUE)
 mtext(side=1,"Note",line=2.5)
@@ -524,18 +525,26 @@ mtext(side=2,"Count",line=2.5)
 
 Dans la figure ci-dessus, l'axe des abscisses représente les notes qui ont été octroyées aux cours. Sur l'axe des ordonnées, on trouve le nombre de fois que ces notes ont été données. Les bandes bleues ont été utilisées pour illustrer les méthodes non-LSA (corrélation faite directement sur la matrice termes-documents, moyennant parfois certains traitements) tandis que les bandes rouges sont utilisées pour les méthodes LSA (matrice termes-documents parfois traitée et donnée en entrée dans une fonction LSA).  A priori, on observe que les recommandations sont très bonnes et ce, pour la plupart des méthodes. 
 
-Les moyennes des cours sont compilées dans le tableau suivant: 
-```{r, echo=F}
+Les moyennes des cours pour chaque méthode sont compilées dans le tableau suivant: 
+```{r echo=F}
 liste.cours=c("MEC1210","MTH1006","MEC2115","INF2010","AR320","IND4704")
-moyenne.cours=c(4.13,4.00,3.00,3.90,4.77,3.50)
+moyenne.cours.tot=c(4.13,4.00,3.00,3.90,4.77,3.50)
+moyenne.cours.tt=c(4.6,4.2,3.6,4.2,5,3.6)
+moyenne.cours.tfidf=c(1.6,3.6,2.4,4,3.6,2.4)
+moyenne.cours.ent=c(4.6,4.2,3.6,4.2,5,3.6)
+moyenne.cours.lsa=c(4.6,5,4,3.6,5,2.6)
+moyenne.cours.lsa.tf=c(4.8,2.6,1.4,3.8,5,4.6)
+moyenne.cours.lsa.ent=c(4.6,4.4,3,3.6,5,4.2)
 moyenne.methode.mik=c(4.13,2.53,4.13,4.53,2.93,4)
 moyenne.methode.claude=c(4.27,3.33,4.27,3.73,4.47,4.27)
 moyenne.gen=c(4.2,2.93,4.2,4.13,3.7,4.13)
-tableau.moy.cours=data.frame(Moy=moyenne.cours)
+tableau.moy.cours=cbind(moyenne.cours.tt,moyenne.cours.tfidf,moyenne.cours.ent,moyenne.cours.lsa,moyenne.cours.lsa.tf,moyenne.cours.lsa.ent,moyenne.cours.tot)
+
 rownames(tableau.moy.cours)=liste.cours
+colnames(tableau.moy.cours)=c(method,"Moy.Totale")
 tableau.moy.cours
 ```
-On voit dans ce tableau que les deux notes les plus hautes sont les cours de thermodynamique (MEC1210) et Aérodynamique (AR320) alors que les deux notes les plus basses sont les cours d'instrumentation (MEC2115) et de prise de décision industrielle (IND4704). Une explication plausible est que ces méthodes performent bien pour des domaines techniques. Par exemple, en aérodynamique, les mêmes termes technique reviennent plus souvent (ex: profil d'aile, écoulement de Bernouilli, couche limite) et donc, les méthodes non-LSA performent mieux. En ce qui concerne les cours, avec les moins bonnes notes, on remarque qu'il s'agit de cours plutôt généraux, la théorie de la mesure ainsi que la précision étant commune à plusieurs domaines. 
+On voit dans ce tableau que les deux notes totales les plus hautes sont les cours de thermodynamique (MEC1210) et Aérodynamique (AR320) alors que les deux notes les plus basses sont les cours d'instrumentation (MEC2115) et de prise de décision industrielle (IND4704). Une explication plausible est que ces méthodes performent bien pour des domaines techniques. Par exemple, en aérodynamique, les mêmes termes technique reviennent plus souvent (ex: profil d'aile, écoulement de Bernouilli, couche limite) et donc, les méthodes non-LSA performent mieux. En ce qui concerne les cours, avec les moins bonnes notes, on remarque qu'il s'agit de cours plutôt généraux, la théorie de la mesure ainsi que la précision étant commune à plusieurs domaines.
 
 Ensuite, on présente un tableau synthétisant les moyennes des notes des méthodes pour chaque répondant: 
 ```{r echo=F}
@@ -564,25 +573,90 @@ Par ailleurs, pour remédier à ce problème, les auteurs de l'articles supprimaien
 ```{r echo=F}
 mat.tf.idf.modif
 ```
-On voit maintenant qu'il n'y a plus de termes irréguliers. De plus, on conclut aussi que TF-IDF fait un bon travail pour identifier les termes significatifs pour chacun des cours. En regénérant d'autres recommandations avec cette correction, on conclut que TF-IDF donne exactement les mêmes résultats que termes-termes tandis que LSA-TF-IDF donnent exactement les mêmes résultats que LSA classique. 
+On voit maintenant qu'il n'y a plus de termes irréguliers. De plus, on conclut aussi que TF-IDF fait un bon travail pour identifier les termes significatifs pour chacun des cours. En regénérant d'autres recommandations avec cette correction, on conclut que le TF-IDF modifié donne exactement les mêmes résultats que termes-termes tandis que LSA-TF-IDF donnent les mêmes résultats que LSA classique. 
 
 ## Variations LSA 
+En premier lieu, nous allons générer des recommandations pour les trois méthodes LSA avec un nombre de dimensions réduites de 100 au lieu de 50 afin d'étudier quelles sont les différences. Dans le but d'abréger cette section et puisque répondre au sondage était long et fastidieux, nous allons présenter un comparatif des moyennes pour le cours MEC2115 d'intrumentation: 
+
+```{r echo=F}
+moyenne.50=c(4,1.4,3)
+moyenne.100=c(3.8,3,3)
+tableau.variation=data.frame(Moy.50=moyenne.50,
+                             Moy.100=moyenne.100)
+rownames(tableau.variation)=method[4:6]
+tableau.variation
+```
+On voit que les résultats sont très rapprochés pour les méthodes LSA et LSA-Entropy, mais on observe une différence marquée pour LSA-TF-IDF. Toutefois, rappelons qu'il s'agit du TF-IDF sans correction, avec la normalisation logarithmique. Lorsqu'il est corrigé, les résultats sont identiques à LSA. Pour ce qui est de la nature des recommandations, les cours recommandés sont quasi identiques pour LSA-Entropy, mais diffèrent significativement pour LSA (tout en restant de qualité similaire). En somme, on conclut que l'effet du nombre de dimensions n'a pas beaucoup d'importance sur la qualité des recommandations pour ce problème. 
+
+En second lieu, on voulait voir si les dimensions réduites conservées par LSA étaient dépendantes de l'ordre des cours et des termes dans la matrice termes-documents initiale. Pour ce faire, on a pris un cours qui donnait beaucoup de recommandations hors cursus. Le cours de thermodynamique (MEC1210) génère beaucoup de recommandations de cours en génie chimique physique, ce qui est normal et voulu considérant la nature du cours. Nous avons donc positionné les 50 cours de mécanique et les 50 termes ayant les plus haut TF-IDF en mécanique dans les 50 premières lignes et colonnes de la matrice termes-documents. De cette manière, on voulait voir si davantage de recommandations en génie mécanique allait être générées. La réponse est catégorique: les recommandations sont en tout point identiques peu importe comment les lignes et colonnes de la matrice initiale sont ordonnées. Ainsi, on conclut que les dimensions latentes font fi de cet arrangement et arrivent véritablement à dégager le sens global de l'ensemble de données initial. 
+
+## Corrélations termes-termes
+Finalement, dans le but d'essayer de comprendre quels sont les étapes intermédiaires de LSA pour dégager la sémantique des textes, nous avons décidé de faire un comparatif des corrélations entre les termes avant et après l'application de LSA.
+
+Donc, 13 termes représentant bien nos cours tests ont été choisis et les termes les plus similaires   basés sur la corrélation ont été retournés dans la matrice termes-documents. On obtient ceci : 
+
+Termes les plus similaires (après LSA)
+```{r echo=F}
+mat.termes.reduit
+```
+
+Ensuite, on applique LSA sur la matrice termes-documents et on effectue le même calcul des termes les plus similaires. On obtient ceci : 
+
+Termes les plus similaires (après LSA)
+```{r echo=F}
+mat.termes.lsa.reduit
+```
+A priori, on observe plusieurs similarités entre ces matrices, mais aussi certaines différences. Par exemple, si on prend le terme "algorithm", les termes qui diffèrent d'une matrice à l'autre sont "heuristique", "graph" et "procedural" pour la matrice avant LSA versus "asymptotique", "campeur", "gloutonn". Par conséquent, on remarque que les mots liés à une corrélation basés sur la co-occurrence de termes (avant LSA) sont exclusivement dans le domaine du mot cible. En revanche, les mots liés à une corrélation sur la matrice post-LSA sont des termes qui pourraient être utilisés dans un autre contexte. Ici, on comprend que LSA a bien associé le contexte des termes "campeur" et "gloutonn" (on parle ici de l'algorithme sac de "campeur" et de "greedy algorithm") avec le contexte de "algorithm" et ce, sans qu'il y est nécessairement co-occurrence des termes. En effet, on voit qu'il n'y a jamais co-occurrence des termes "algorithm" et "campeur": 
+```{r echo=T}
+sum(m.poly[ which(rownames(m.poly)=="algorithm"),]==m.poly[which(rownames(m.poly)=="campeur"),]&m.poly[ which(rownames(m.poly)=="algorithm"),]>0)
+```
 
 # Conclusion
+Pour conclure, on énoncera les principales conclusions de cette étude ainsi que les étapes futures du projet.
+## Discussion et conclusions sur l'analyse
+Les conclusions sur l'analyse se divise en trois points. 
+
+### Méthodes non LSA
+Les méthodes non-LSA (termes-termes, TF-IDF, Log-entropy) fonctionnent très bien pour ce contexte. En revanche, il faut garder en tête qu'il s'agit d'un problème dans lequel les termes sont très techniques. Ceci signifie qu'il arrive fréquemment que des termes identiques soient utilisés pour exprimer un concept et donc, les méthodes de co-occurrences fonctionnent bien. Par exemple, si on prend le cours d'aérodynamque (AR320) qui possède la description suivante: 
+
+"TitreCours: Arodynamique II
+DescriptionCours: coulement stationnaire incompressible en 2D. coulement  potentiel. Potentiel de vitesses. Fonction de courant. Singularits : sources, doublets, tourbillons. Potentiel complexe. Profils arodynamiques. Thorme de Kutta-Joukowski. Caractristiques arodynamiques des profils. Aile d'envergure finie. Thorie de la ligne portante. Viscosit. Couche limite laminaire sur une plaque plane. coulements compressibles. Onde de choc. Nombre de Mach. coulement supersonique. Arodynamique de l'hlicoptre. Thorie des hlices. Rotor d'hlicoptre."
+
+La recommandation la plus populaire par les méthodes non LSA est le cours AE4300 dont la description est la suivante: 
+"TitreCours: Arodynamique de l'avion II
+DescriptionCours: Interaction couche limite-coulement potentiel. Forces de trane. Calcul des caractristiques arodynamiques (portance, trane, moment) de profils d'ailes en coulement plan incompressible. Mcanismes et techniques de l'hypersustentation. tude fondamentale de l'hypersustentation et estimation de portance maximum. Mthode des lments de surface pour le calcul arodynamique des ailes. Ailes en coulement compressible subsonique. Arodynamique transsonique : thorie des profils d'aile, solutions gnrales d'coulements transsoniques, aile d'envergure finie et avion en coulement transsonique."
+
+On voit donc que les cours sont extrêmement similaires, que ce soit à cause des termes utilisés que ce qu'ils proposent en général. 
+
+### Méthodes LSA
+En ce qui concerne les méthodes LSA, les résultats globaux sont moins bon, mais plus intéressant. Ceci s'explique par le fait qu'elles fourni des recommandations qui respectent la maxime "high risk, high reward". Effectivement, les recommandations étaient plus souvent osées, ce qui résultait parfois en des propositions inadéquates. Cependant, lorsque celles-ci étaient justes, elles étaient souvent intéressante et nouvelle. Par exemple, pour le cours d'algèbre linéaire (MTH1006) dont la description est la suivante: 
+
+"TitreCours: Algebre lineaire
+DescriptionCours: Plan et espace euclidiens. Vecteurs geometriques du plan et de l'espace. Produits scalaire, vectoriel et mixte. Droites et plans. Espaces vectoriels, sous-espaces vectoriels, independance lineaire, base, dimension. Bases orthogonales et orthonormales, procede de Gram-Schmidt. Transformations lineaires, matrices et changement de bases. Noyau, image et rang. Systemes d'equations lineaires homogenes, non homogenes et liens avec les matrices. Valeurs propres et vecteurs propres. Diagonalisation. Formes quadratiques et matrices symetriques. Applications a la geometrie : classification des equations du second degre (coniques et quadriques)."
+
+Un des cours que LSA nous a retourné est MTH3215 dont la description est : 
+
+"TitreCours: Mathematiques pour les applicat. multimedias
+DescriptionCours: Interpolation, differentiation et integration numerique. Resolution numerique des equations algebriques. Methodes directes et iteratives pour les systemes d'equations algebriques lineaires et non lineaires. Modelisation mathematique. Erreurs de modelisation, de representation et de troncature. Theorie des equations aux derivees partielles. Methode de separation des variables. Series de Fourier."
+
+On voit ici que les cours sont beaucoup moins similaires que les cours d'aérodynamique, mais ils sont tout de même liés. On sort du domaine de l'algèbre linéaire pour découvrir le domaine du calcul numérique dans les applications multimédias. On émet l'hypothèse que ce choix est plus intéressant pour l'utilisateur qu'un autre cours d'aérodynamique. Cependant, il arrivait aussi quelques fois que la recommandation n'était pas du tout en lien avec le cours cible.
+
+### Robustesse des méthodes
+Enfin, que ce soit en faisant varier le nombre de dimensions réduites ou en réarrangeant la matrice initiale, les recommandations se sont avérées très robustes et ce, pour toutes les méthodes. De plus, la pertinences des recommandations s'est avérée généralisée pour la plupart des cours, avec une légère distinction par rapport au niveau de technicalité du cours (meilleure recommandation pour des cours plus techniques). 
 
 ## Étapes Futures
 
-À la suite de ce projet, nous aurions plusieurs étapes à compléter pour assurer quel des modèles est réellement le plus efficace, mais aussi pour rendre les recommandations encore meilleur. Voici la liste des étapes potentielles:  
+À la suite de ce projet, nous aurions plusieurs étapes à compléter pour confirmer le uel des modèles est réellement le plus efficace, mais aussi pour rendre les recommandations encore meilleures. Voici la liste des étapes potentielles:  
 
-* Effectuer un sondage plus étendu. Pour l'instant, le sondage a été effectué seulement par Mikael et Claude. Avec plus de temps, nous devrions contacter plus d'étudiant, de backgrounds différents pour juger de la qualité des recommandations. Nous aurions aussi un travail plus systématique nécessaire pour retirer les biais de ce sondage. Par exemple, mettre dans un ordre aléatoire les recommandations et les méthodes.
+* Effectuer un sondage plus étendu. Pour l'instant, le sondage a été effectué seulement par Mikael et Claude. Avec plus de temps, nous devrions contacter plus d'étudiant de domaines différents pour juger de la qualité des recommandations. Nous aurions aussi un travail plus systématique nécessaire pour retirer les biais de ce sondage. Par exemple, mettre dans un ordre aléatoire les recommandations et les méthodes.
 
 * Obtenir des données supplémentaires. Nous avions en tête d'obtenir des données pour ajouter un aspect collaboratif au système. Les données pourraient être la liste des cours suivis pour différents étudiants. De plus, avec ce genre de données, nous pourrions effectuer des méthodes de validation du style "Leave one out" en tentant de prédire les cours que les étudiants ont suivis.
 
-* Ajouter des critères de hiérarchie de cours. C'est à dire que notre système n'a aucune restriction pour les recommandations, le cours en entrée pourrait être un cours de maitrise et la recommandation, un cours de 1^ere année de BAC. En créant une tel hiérarchie, on pourrait potentiellement augmenter la qualité des recommandations.
+* Ajouter des critères de hiérarchie de cours. Puisque notre système n'a aucune restriction pour les recommandations, le cours en entrée pourrait être un cours de maitrise et la recommandation, un cours de 1^ere année de BAC. En créant une telle hiérarchie, on pourrait potentiellement augmenter la qualité des recommandations.
 
-* Ajouter les cours d'autres universités. Pour le moment, nous couvrons seulement Polytechnique pour réduire le temps de calcul. Cependant, en utilisant tous les cours qui sont à notre diposition (UQAM, U de M et HEC), nous pourions améliorer la diversité des recommandations. Aussi, nous pourrions ajouter tous les universités montréalaises pour avoir un système complet pour la grande région de Montréal. Certains cours dans d'autres universités pourraient grandement améliorer l'expérience de certains étudiants.
+* Ajouter les cours d'autres universités. Pour le moment, nous couvrons seulement Polytechnique pour réduire le temps de calcul. Cependant, en utilisant tous les cours qui sont à notre diposition (UQAM, U de M et HEC), nous pourions améliorer la diversité des recommandations. Aussi, nous pourrions ajouter toutes les universités montréalaises pour avoir un système complet pour la grande région de Montréal. Certains cours dans d'autres universités pourraient grandement améliorer l'expérience de certains étudiants.
 
-* Penser à des méthodes alternatives de validation des recommandations. Pour le projet, un sondage a été effectué, cependant, une étape future serait de repenser à si cette méthode est réellement la plus efficace.
+* Penser à des méthodes alternatives de validation des recommandations. Pour le projet, un sondage a été effectué. Cependant, une étape future serait définir si cette méthode est réellement la plus efficace.
 
 # Références
   
