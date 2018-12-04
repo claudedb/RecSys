@@ -52,11 +52,10 @@ user.user <- function(m,n.voisins)
   {
     kappa <- 1/sum(cosinus.uu[i,neighbors.uu[i,]])
     
-    estimation[i,] <- as.vector(kappa * 
-                                  (votes.centre[,neighbors.uu[i,]]) %*%
-                                  cosinus.uu[i,neighbors.uu[i,]])
+    estimation[,i] <- kappa * (votes.centre[,neighbors.uu[i,]] %*% 
+                                 cosinus.uu[i,neighbors.uu[i,]])
     
-    estimation[i,] <- avg.user[i] + estimation[i,]
+    estimation[,i] <- avg.user[i] + estimation[,i]
     
     estimation[estimation>5] <- 5
   }
@@ -138,7 +137,7 @@ SVD.dim <- RMSE.SVD.CV[which(RMSE.SVD.CV$RMSE == min(RMSE.SVD.CV$RMSE)),1]
 
 item.item <- function(m,n.voisins)
 {
-  n.voisins <- 10
+  #n.voisins <- 10
   votes.ii <- m
   sums.2<-colSums(votes.ii^2)
   dist.eucl<-sweep(sweep(-2*t(votes.ii) %*% votes.ii,2,sums.2,"+"),1,sums.2,"+")
@@ -158,11 +157,10 @@ item.item <- function(m,n.voisins)
   {
     kappa <- 1/sum(cosinus.ii[i,neighbors.ii[i,]])
     
-    estimation[i,] <- as.vector(kappa * 
-                                  (cosinus.ii[i,neighbors.ii[i,]] %*%
-                                     votes.centre[neighbors.ii[i,],]))
+    estimation[,i] <- kappa * (votes.centre[,neighbors.ii[i,]] %*% 
+                                 cosinus.ii[i,neighbors.ii[i,]])
     
-    estimation[i,] <- avg.item[i] + estimation[i,]
+    estimation[,i] <- avg.item[i] + estimation[,i]
     
     estimation[estimation>5] <- 5
   }
@@ -198,7 +196,7 @@ cross.validation.ii <- function(m,k)
 cross.validation.uu <- function(m,k)
 {
   set.seed(k)
-  set.seed(10)
+  #set.seed(10)
   j<-m>0
   j.test<-j
   j.test[sample(length(j),0.85*length(j))]<-FALSE
